@@ -1,0 +1,23 @@
+{
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": 6,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "rules":{
+    "no-redeclare": 0,
+    "no-console": 1,
+    "no-unused-vars": 1,
+    "no-useless-escape": 1
+  },
+  "env": {
+    "browser": true,
+    "jquery": true,
+    "commonjs": true,
+    "es6": true,
+    "node": true
+  }
+}

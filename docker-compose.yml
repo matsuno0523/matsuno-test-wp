@@ -1,0 +1,57 @@
+version: '3.8'
+services:
+  db:
+    image: mariadb:10.5
+    environment:
+      MYSQL_ROOT_PASSWORD: mpcreative
+      MYSQL_DATABASE: mpcreative_dbname
+      MYSQL_USER: mpcreative_user
+      MYSQL_PASSWORD: mpcreative_pass
+    volumes:
+      - db_data:/var/lib/mysql
+      # - ./mpcreative_dbname.sql:/docker-entrypoint-initdb.d/1.sql
+    restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pmpcreative"]
+      timeout: 20s
+      retries: 10
+      start_period: 20s
+
+  wordpress:
+    image: wordpress:php7.4-apache
+    ports:
+      - "8080:80"
+    environment:
+      APP_ENV: docker_dev
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: mpcreative_user
+      WORDPRESS_DB_PASSWORD: mpcreative_pass
+      WORDPRESS_DB_NAME: mpcreative_dbname
+      WORDPRESS_DEBUG: "true"
+      WORDPRESS_CONFIG_EXTRA: |
+        if ( ! defined( 'ABSPATH' ) ) {
+          define( 'ABSPATH', __DIR__ . '/wp/' );
+        }
+        define('WP_SITEURL', 'http://localhost:8080/wp');
+        define('WP_HOME', 'http://localhost:8080');
+        define('UPLOADS', 'wp/uploads' );
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./public_html:/var/www/html/
+      - ./wp-config-local-include.php:/var/www/html/wp/wp-config.php
+    restart: always
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: mpcreative
+    ports:
+      - "8081:80"
+    restart: always
+volumes:
+  db_data:

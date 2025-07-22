@@ -1,0 +1,4 @@
+/* 投稿一覧のサムネ枠を狭める */
+.wp-list-table.fixed .column-thumbnail{
+  width: 10%;
+}
