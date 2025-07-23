@@ -1,1 +1,31 @@
-@use 'rwd002';
+// webfont
+@use "@fortawesome/fontawesome-free/scss/fontawesome" with (
+  $fa-font-path: "../assets/webfonts",
+);
+@use "@fortawesome/fontawesome-free/scss/solid" as fa-solid;
+@use "@fortawesome/fontawesome-free/scss/regular" as fa-regular;
+@use "@fortawesome/fontawesome-free/scss/brands" as fa-brands;
+
+// import Swiper styles
+// @use '../../node_modules/swiper/swiper-bundle.min';
+
+// components
+@use 'components/title';
+@use 'components/button';
+
+// elements
+@use 'elements/header';
+@use 'elements/gnav';
+@use 'elements/footer';
+@use 'elements/mainvisual';
+@use 'elements/breadcrumbs';
+@use 'elements/pagination';
+@use 'elements/moduletitle';
+
+// plugin
+@use 'plugins/lazydisp';
+@use 'plugins/pageload';
+@use '../../node_modules/lity/dist/lity.min';
+
+// pages
+@use 'pages/home';

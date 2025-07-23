@@ -132,6 +132,22 @@ function mp_scripts() {
 
 	// wp_enqueue_script( 'mp-skip-link-focus-fix', get_template_directory_uri() . '/js/skip-link-focus-fix.js', array(), '20151215', true );
 
+	wp_enqueue_style(
+        'my-custom-style', // ハンドル名
+        home_url( '/assets/css/customize.min.css' ), // パス
+        array(), // 依存関係
+        '20231006' // バージョン
+    );
+
+    // JavaScriptファイル（customize.min.js）
+    wp_enqueue_script(
+        'my-custom-script', // ハンドル名
+        home_url( '/assets/js/customize.min.js' ), // パス
+        array(), // 依存関係（jQueryに依存する場合は 'jquery' を追加）
+        '20231006', // バージョン
+        true // フッターで読み込む（true）
+    );
+
 	// if ( is_singular() && comments_open() && get_option( 'thread_comments' ) ) {
 	// 	wp_enqueue_script( 'comment-reply' );
 	// }

@@ -9,7 +9,7 @@
     "svgSprite": "gulp svgSprite",
     "webpack": "webpack --progress --devtool source-map --watch --mode development",
     "webpack:prod": "webpack --progress --devtool source-map --mode production",
-    "serve": "browser-sync --no-notify --no-ghost-mode  --proxy example.co.jp start --files './assets/css/**/*.css, ./assets/js/**/*.js'",
+    "serve": "browser-sync --no-notify --no-ghost-mode  --proxy localhost:8080 start --files './assets/css/**/*.css, ./assets/js/**/*.js'",
     "avif": "gulp avif"
   },
   "browserslist": [
