@@ -1,0 +1,35 @@
+/*
+ * Lazydisp
+ *
+ * スクロールによって表示させたい要素に[data-lazydisp]属性を付与し、
+ * 表示の仕方はその属性の値で指定する
+ *
+ * [usage]
+ * <div data-lazydisp="bottom">something</div>　← 下から出てくる
+ *
+ */
+
+
+ [data-lazydisp]{
+  opacity: 1;
+  transition: all 0.5s ease-in-out;
+  transform: translate( 0, 0 ) scale( 1, 1 );
+}
+.lazyReady{
+  transition: none;
+}
+.lazyhide{
+  opacity: 0;
+  &[data-lazydisp="bottom"]{
+    transform: translateY( 50px );
+  }
+  &[data-lazydisp="top"]{
+    transform: translateY( -50px );
+  }
+  &[data-lazydisp="left"]{
+    transform: translateX( -50px );
+  }
+  &[data-lazydisp="right"]{
+    transform: translateX( 50px );
+  }
+}

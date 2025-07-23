@@ -1,0 +1,244 @@
+@use '../foundation/_forward' as *;
+@use '../foundation/bootstrap';
+.rwd002-block-contact {
+  padding-left: map-get($spacers, 4);
+  padding-right: map-get($spacers, 4);
+  margin: map-get($spacers, 6) 0;
+
+  @include media-down(lg) {
+    margin: map-get($spacers, 4) 0;
+  }
+
+  @include media-down(md) {
+    padding-left: map-get($spacers, 3);
+    padding-right: map-get($spacers, 3);
+  }
+
+  @include media-up(xl) {
+    .is-side &{
+      margin: map-get($spacers, 5) 0;
+    }
+  }
+
+  &__inner {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  &__body {
+    background-color: $gray-100;
+    border-radius: $border-radius;
+    padding: map-get($spacers, 4);
+    @include media-down(md) {
+      padding: 2.2em map-get($spacers, 3);
+    }
+  }
+
+  .is-side &__body {
+    @include media-up(xl) {
+      padding: map-get($spacers, 3);
+    }
+  }
+
+  &__title {
+    font-size: $font-size-lg;
+    text-align: center;
+    font-weight: $font-weight-bold;
+    letter-spacing: 0.16em;
+    font-feature-settings: "palt";
+    margin-bottom: 1em;
+    line-height: 1.5;
+    @include media-down(md) {
+      font-size: $font-size-base * 1.0625;
+    }
+    @include media-up(xl) {
+      .is-side &{
+        font-size: $font-size-base * 1.0625;
+      }
+    }
+    span {
+      display: inline-block;
+      position: relative;
+      padding-bottom: 0.9em;
+    }
+    span:after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 15%;
+      height: 2px;
+      width: 70%;
+      background-color: #969697;
+    }
+  }
+
+  &__body {
+  }
+
+  &__tel {
+    margin: 0.7em -0.5em 0.6em;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: $font-size-base * 2.1875;
+    @include media-down(lg) {
+      font-size: max( $font-size-base * 1.5, 4.15vw);
+    }
+    @include media-down(md) {
+      margin-top: 1em;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    @include media-up(xl) {
+      .is-side &{
+        font-size: $font-size-base * 1.4;
+      }
+    }
+  }
+
+  &__tel-item {
+    margin: 0 0.6em;
+    @include media-down(lg) {
+      margin: 0 0.4em;
+    }
+    @include media-down(md) {
+      width: 100%;
+      margin: 0;
+    }
+    dt,
+    dd {
+      display: inline-block;
+      margin: 0;
+      font-family: "Roboto", $font-family-sans-serif;
+      letter-spacing: 0.12em;
+    }
+    dt {
+      font-size: 0.8em;
+      letter-spacing: 0.1em;
+    }
+    dt span:after {
+      content: ":";
+    }
+    dd{
+      font-weight: $font-weight-medium;
+    }
+    a[href^="tel:"] {
+      transition: $transition-base;
+      &:hover,&:focus{
+        text-decoration: none;
+        color: tint($body-color, 15%);
+      }
+    }
+  }
+
+  &__info {
+    column-count: 2;
+    column-gap: 2em;
+    max-width: 880px;
+    margin: 0 auto;
+    @include media-down(md) {
+      column-count: 1;
+      column-gap: 0;
+    }
+    @include media-up(xl) {
+      .is-side &{
+        column-count: 1;
+        column-gap: 0;
+      }
+    }
+  }
+
+  &__info-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 0.4em;
+    break-inside: avoid;
+    @include media-down(md) {
+      display: block;
+      margin-bottom: 0;
+    }
+    @include media-up(xl) {
+      .is-side &{
+        display: block;
+        margin-bottom: 0;
+      }
+    }
+
+    dt,dd{
+      margin: 0;
+      padding: 0.2em;
+      font-size: $font-size-sm;
+      letter-spacing: 0.19em;
+      font-feature-settings: "palt";
+      font-weight: $font-weight-normal;
+      @include media-down(md) {
+        padding: 0;
+        display: inline-block;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          padding: 0;
+          display: inline-block;
+        }
+      }
+    }
+
+    dt{
+      flex: 0 0 27.75%;
+      text-align: center;
+      white-space: nowrap;
+      border-radius: $border-radius;
+      @include media-up(md) {
+        background-color: $white;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          background-color: transparent;
+          span:after{
+            content: ":";
+          }
+        }
+      }
+      @include media-down(md) {
+        span:after{
+          content: ":";
+        }
+      }
+    }
+    dd{
+      padding-left: 2em;
+      @include media-down(md) {
+        padding-left: 0;
+      }
+    }
+  }
+
+  &__btnwrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2em;
+    @include media-down(md) {
+      margin-top: 1.2em;
+    }
+  }
+  &__btn {
+    @extend .btn !optional;
+    @extend .btn-sm !optional;
+    @extend .btn-outline-primary !optional;
+    width: 100%;
+    padding-top: 0.7em;
+    padding-bottom: 0.7em;
+    @include media-up(md) {
+      max-width: 240px;
+    }
+    span:after {
+      content: "\f105";
+      margin-left: 0.5em;
+      font-family: "Font Awesome 6 Free";
+      font-size: 0.8em;
+      vertical-align: text-top;
+    }
+  }
+}

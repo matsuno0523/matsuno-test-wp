@@ -1,0 +1,29 @@
+@use '../foundation/_forward' as *;
+.rwd002-block-freearea {
+  padding-left: map-get($spacers, 4);
+  padding-right: map-get($spacers, 4);
+  margin: map-get($spacers, 6) 0;
+
+  .is-side &{
+    margin: map-get($spacers, 5) 0;
+  }
+  @include media-down(lg) {
+    margin: map-get($spacers, 4) 0;
+  }
+  
+  @include media-down(md) {
+    padding-left: map-get($spacers, 3);
+    padding-right: map-get($spacers, 3);  
+  }
+
+  &__inner{
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  img{
+    max-width: 100%;
+    height: auto;
+  }
+}

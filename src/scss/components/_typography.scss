@@ -1,0 +1,11 @@
+@use '../foundation/_forward' as *;
+%text-entry-body {
+  line-height: $line-height-lg;
+  font-feature-settings: "palt";
+  letter-spacing: 0.14em;
+  font-size: $font-size-base;
+  -webkit-font-smoothing: antialiased;
+  @include media-down(md) {
+    font-size: $font-size-base * 0.9375;
+  }
+}

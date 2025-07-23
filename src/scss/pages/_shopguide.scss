@@ -1,0 +1,47 @@
+@use '../foundation/forward' as *;
+@use '../foundation/bootstrap';
+.rwd002-shopguide-houki {
+  max-width: 100%;
+  width: 1000px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  @include media-down(sm) {
+    padding: 0 1.6875rem;
+  }
+
+  table {
+    width: 100%;
+    th, td {
+      display: block;
+    }
+    th {
+      position: relative;
+      border: solid #E9E9E9;
+      border-width: 1px 0 0;
+      color: $gray-800;
+      font-size: $font-size-lg;
+      font-weight: $font-weight-bold;
+      letter-spacing: .18em;
+      @include media-up(md) {
+        padding-top: 2.75em;
+        padding-bottom: 1.5rem;
+      }
+      &:before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        display: block;
+        width: 304px;
+        height: 1px;
+        background: #C0C1C1;
+        z-index: 1;
+      }
+    }
+    td {
+      @include media-up(md) {
+        padding-bottom: 2.75em;
+      }
+    }
+  }
+}

@@ -1,3 +1,6 @@
+@use './variables' as *;
+@use "sass:color";
+
 /// Slightly lighten a color
 /// @access public
 /// @param {Color} $color - color to tint
@@ -5,7 +8,7 @@
 /// @return {Color}
 
 @function tint($color, $percentage){
-  @return mix(white, $color, $percentage);
+  @return color.mix(white, $color, $percentage);
 }
 
 /// Slightly darken a color
@@ -15,7 +18,7 @@
 /// @return {Color}
 
 @function shade($color, $percentage){
-  @return mix(black, $color, $percentage);
+  @return color.mix(black, $color, $percentage);
 }
 
 @function base64Encode($string) {
@@ -68,4 +71,43 @@
     $base64: $base64+$tmp;
   }
   @return $base64;
+}
+
+@function _strReplace($substr, $newsubstr, $str, $all:false) {
+  $pos : str-index($str, $substr);
+  @while $pos != null {
+      $strlen : str-length($substr);
+      $start : str-slice($str, 0, $pos - 1);
+      $end : str-slice($str, $pos + $strlen);
+      $str : $start + $newsubstr + $end;
+      @if $all == true {
+          $pos : str-index($str, $substr);
+      } @else {
+          $pos : null;
+      }
+  }
+  @return $str;
+}
+
+@function _svgUrlEncode($svg) {
+  $repMap : (
+      "<"  : "%3C",
+      ">"  : "%3E",
+      "#"  : "%23",
+      "{"  : "%7B",
+      "}"  : "%7D",
+      "\"" : "'"
+  );
+  $enc : $svg;
+  @each $s, $r in $repMap {
+      $enc : _strReplace($s, $r, $enc, true);
+  }
+  @return $enc;
+}
+
+@function svgUrlFunc($svg, $enc:true) {
+  @if $enc == true {
+      $svg : _svgUrlEncode($svg);
+  }
+  @return url("data:image/svg+xml,#{$svg}");
 }

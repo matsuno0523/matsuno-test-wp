@@ -1,0 +1,339 @@
+@use '../foundation/_forward' as *;
+@use '../foundation/bootstrap';
+.rwd002-gnav {
+  @include media-up(lg) {
+    margin-left: map-get($spacers, 3);
+  }
+
+  @include media-down(lg) {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 100%;
+    z-index: 100;
+    background-color: transparent;
+    transform: translateX(100%);
+    transition: background-color 0.2s ease-in-out, transform 0s 0.5s;
+  }
+
+  &.is-active {
+    // メニューが開いたときのオーバーレイ
+    @include media-down(lg) {
+      // background-color: fade-out($black, 0.2);
+      transform: translateX(0%);
+      transition: background-color 0.2s ease-in-out, transform 0s 0s;
+    }
+  }
+
+  &__inner {
+    // 格納メニュー
+    @include media-down(lg) {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      // padding: $gnav-height-md map-get($spacers, 2) map-get($spacers, 2);
+      width: calc(100vw - map-get($spacers, 5));
+      transform: translateX(100%);
+      transition: $transition-base;
+      background-color: $white;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @include media-down(md) {
+      // padding-top: $gnav-height-xs;
+    }
+  }
+
+  .is-active &__inner {
+    @include media-down(lg) {
+      transform: translateX(0%);
+    }
+  }
+
+  &__list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+
+    @include media-up(lg) {
+      margin-right: -0.75em;
+      align-items: stretch;
+      flex-direction: row;
+    }
+  }
+
+  &__copyright {
+    @include media-up(lg) {
+      display: none;
+    }
+    @include media-down(lg) {
+      font-size: $font-size-xs;
+      color: tint($body-color, 50%);
+    }
+  }
+}
+
+.rwd002-gnav-sublist {
+  // sitemap.phpなどのシステムメニュー
+  list-style: none;
+  padding: 0;
+  @include media-up(lg) {
+    display: none;
+  }
+  @include media-down(lg) {
+    display: flex;
+    flex-wrap: wrap;
+    margin: map-get($spacers, 2) 0;
+    color: tint($body-color, 50%);
+    font-size: $font-size-xs;
+    margin-left: -0.5em;
+    margin-right: -0.5em;
+    &__item{
+      position: relative;
+      padding: 0.2em 0.6em;
+    }
+    &__item + &__item:before{
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translate(-50%,-50%);
+      content: "";
+      height: 1em;
+      width: 1px;
+      background-color: tint($body-color, 50%);
+    }
+  }
+}
+
+// グローバルナビ　Item(親)
+.rwd002-gnav-item {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.9375rem;
+  letter-spacing: 0.14em;
+  text-indent: 0.14em;
+  font-feature-settings: "palt";
+
+  @include media-down(lg) {
+    border: solid $gray-300;
+    border-width: 1px 0;
+    & + & {
+      border-top-width: 0;
+    }
+  }
+
+  &__link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    font-weight: $font-weight-bold;
+    transition: $transition-base;
+    padding: 0.25em 0 0.25em 1.5em;
+    min-height: 3.3em;
+
+    @include media-up(lg) {
+      justify-content: center;
+      height: 100%;
+      padding: 0 0.75em;
+      // min-height: $gnav-height-md;
+    }
+    @include media-down(lg) {
+      flex-grow: 1;
+      flex-basis: calc(100% - 50px);
+    }
+
+    &:hover,
+    &:focus,
+    &.current {
+      color: $primary;
+      text-decoration: none;
+    }
+
+    // PC表示のメニュー装飾
+    @include media-up(lg) {
+      span {
+        position: relative;
+        padding-top: 0.5em;
+        padding-bottom: 0.5em;
+
+        &:after {
+          content: "";
+          position: absolute;
+          top: 100%;
+          left: calc(50% - min(2em,50%));
+          height: 1px;
+          width: 0;
+          background-color: $primary;
+          transition: $transition-base;
+          opacity: 0;
+        }
+      }
+      &.current span:after {
+        max-width: 100%;
+        width: 4em;
+        opacity: 1;
+      }
+    }
+
+    // SP表示のメニュー装飾
+    @include media-down(lg) {
+      &:after {
+        position: absolute;
+        content: "";
+        top: calc(50% - 0.3em);
+        left: 0;
+        width: 1.5em;
+        height: 0.6em;
+        background: center / contain no-repeat;
+        background-image: svgUrlFunc(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Pro 6.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path fill="#{$body-color}" d="M96 480c-8.188 0-16.38-3.125-22.62-9.375c-12.5-12.5-12.5-32.75 0-45.25L242.8 256L73.38 86.63c-12.5-12.5-12.5-32.75 0-45.25s32.75-12.5 45.25 0l192 192c12.5 12.5 12.5 32.75 0 45.25l-192 192C112.4 476.9 104.2 480 96 480z"/></svg>'
+        );
+      }
+    }
+  }
+}
+
+// グローバルナビ subnav(子)
+
+/* HTML構成例
+<div class="rwd002-subnav">
+  <div class="rwd002-subnav__inner">
+    <ul class="rwd002-subnav__list">
+      <li class="rwd002-subnav__item">
+        <a href="" class="rwd002-subnav__link"><span>サブメニュー01</span></a>
+      </li>
+      <!-- /.rwd002-subnav__item -->
+      <li class="rwd002-subnav__item">
+        <a href="" class="rwd002-subnav__link"><span>サブメニュー02</span></a>
+      </li>
+      <!-- /.rwd002-subnav__item -->
+      <li class="rwd002-subnav__item">
+        <a href="" class="rwd002-subnav__link"><span>サブメニュー03</span></a>
+      </li>
+      <!-- /.rwd002-subnav__item -->
+    </ul>
+    <!-- /.rwd002-subnav__list -->
+  </div>
+  <!-- /.rwd002-subnav__inner -->
+</div>
+<!-- /.rwd002-subnav -->
+*/
+
+.rwd002-subnav {
+  @include media-up(lg) {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    transform-origin: 0 0;
+    transform: scale(1, 0);
+    transition: transform 0.2s 0.2s ease-in-out;
+
+    &__inner {
+      background-color: $primary;
+      color: $white;
+    }
+
+    &__btn {
+      display: none;
+    }
+
+    .rwd002-gnav-item:hover & {
+      transform: scale(1, 1);
+    }
+
+    &.collapse:not(.show){
+      display: block;
+    }
+  }
+  @include media-down(lg) {
+    flex-basis: 100%;
+  }
+
+  &__inner {
+    @include media-up(lg) {
+      margin: 0 auto;
+    }
+  }
+
+  &__list {
+    list-style: none;
+    padding: 0 1.5em;
+
+    @include media-up(lg) {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    @include media-down(lg) {
+      padding-right: 0;
+      padding-bottom: 1em;
+    }
+  }
+
+  &__tgl {
+    @extend .btn;
+
+    &:focus {
+      box-shadow: none;
+    }
+
+    @include media-up(lg) {
+      display: none;
+    }
+    @include media-down(lg) {
+      position: relative;
+      flex-basis: 50px;
+      &:before,
+      &:after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 10px;
+        height: 1px;
+        background-color: $primary;
+        transition: transform 0.2s ease-in-out;
+      }
+
+      &:after {
+        transform: rotate(-90deg);
+      }
+
+      &.is-active {
+        &:before {
+          transform: rotate(180deg);
+        }
+        &:after {
+          transform: rotate(0deg);
+        }
+      }
+    }
+  }
+}
+.rwd002-header .rwd002-subnav-item {
+  &__link {
+    display: block;
+    transition: $transition-base;
+    &:hover,
+    &:focus {
+      text-decoration: none;
+      opacity: 0.8;
+    }
+    @include media-up(lg) {
+      padding: 0.75em 1em;
+    }
+    @include media-down(lg) {
+      padding: 0.2em 0;
+    }
+  }
+}

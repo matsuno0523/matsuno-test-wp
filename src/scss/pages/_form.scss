@@ -1,0 +1,484 @@
+@use '../foundation/forward' as *;
+@use '../foundation/bootstrap';
+@use '../components/button';
+//フォームトップ
+.rwd002-form-index {
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  @include media-down(sm) {
+    padding: 0 1.6875rem;
+  }
+
+  .is-main &{
+    @include media-up(xl) {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+  &__message {
+    font-size: 1rem;
+    line-height: 1.8;
+    letter-spacing: 0.16em;
+    p,
+    .editor-template p {
+      font-size: 1rem;
+      letter-spacing: 0.16em;
+      line-height: 1.8;
+      text-align: center;
+      @include media-down(sm) {
+        text-align: left;
+      }
+    }
+    .cms-default__formcaution,
+    .editor-template .cms-default__formcaution {
+      margin-top: 3.25em;
+      margin-bottom: 4em;
+      padding: 2em 4em;
+      border: 1px solid #d3d3d3;
+      @include media-down(sm) {
+        padding: 2.75em 1.6875rem 1.875em;
+      }
+      h4 {
+        position: relative;
+        margin-bottom: 1em;
+        padding-bottom: 1em;
+        font-size: $font-size-lg;
+        font-weight: $font-weight-bold;
+        letter-spacing: 0.18em;
+        text-align: center;
+        @include media-down(sm) {
+          margin-bottom: 1.5em;
+          padding-bottom: 0.875em;
+        }
+        &:after {
+          content: "";
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          display: block;
+          width: 120px;
+          height: 2px;
+          margin: auto;
+          background: #969697;
+        }
+      }
+      ul {
+        li {
+          font-size: 0.875rem;
+          letter-spacing: 0.09em;
+        }
+      }
+    }
+  }
+
+  &__list {
+    display: flex;
+    flex-wrap: wrap;
+    @include media-up(md) {
+      margin: 0 -0.625rem;
+    }
+  }
+
+  &__btnwrap {
+  }
+
+  &__button {
+    @extend .btn;
+    @extend .btn-primary;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 80px;
+    margin: 0 auto 20px;
+    padding: 1em 2.5em 1em 1em;
+    @include media-up(md) {
+      width: calc(50% - 1.25rem);
+      margin: 0 0.625rem 20px;
+    }
+    &:after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 24px;
+      display: block;
+      width: 16px;
+      height: 13px;
+      margin: auto;
+      background: svgUrlFunc(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="#{$white}"><!--! Font Awesome Pro 6.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M438.6 278.6l-160 160C272.4 444.9 264.2 448 256 448s-16.38-3.125-22.62-9.375c-12.5-12.5-12.5-32.75 0-45.25L338.8 288H32C14.33 288 .0016 273.7 .0016 256S14.33 224 32 224h306.8l-105.4-105.4c-12.5-12.5-12.5-32.75 0-45.25s32.75-12.5 45.25 0l160 160C451.1 245.9 451.1 266.1 438.6 278.6z"/></svg>'
+        )
+        center/ cover no-repeat;
+    }
+  }
+}
+
+//入力画面
+.rwd002-form-input {
+  width: 100%;
+  max-width: calc(1175px + calc(1.6875rem * 2));
+  margin: map-get($spacers, 6) auto 0;
+  padding: 0 1.6875rem;
+  overflow: hidden;
+
+  .is-main &{
+    margin-top: 0;
+  }
+
+  &__entrytitle {
+    margin-bottom: 1.5em;
+    padding-bottom: 1em;
+    border-bottom: 1px solid #e3e3e3;
+    font-weight: $font-weight-bold;
+    font-size: 1.5625rem;
+    line-height: 1.4;
+    letter-spacing: 0.22em;
+    @include media-down(sm) {
+      margin-bottom: 1.875rem;
+    }
+  }
+
+  &__formHeader {
+    font-size: 1rem;
+    letter-spacing: 0.12em;
+    line-height: 1.75;
+  }
+
+  &__btnwrap {
+    margin-bottom: 50px;
+    @include media-down(sm) {
+      margin-bottom: 38px;
+      padding: 0 0;
+    }
+  }
+
+  &__btnwrap-text {
+    margin-bottom: 2em;
+    font-weight: $font-weight-bold;
+    font-size: 0.875rem;
+    letter-spacing: 0.14em;
+    text-align: center;
+    a {
+      color: #d24123;
+      text-decoration: underline;
+    }
+  }
+  &__submit {
+    @extend .btn;
+    @extend .btn-primary;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 100px;
+    margin: 0 auto 20px;
+    padding: 1em 2.5em 1em 1em;
+    font-size: 1.0625rem;
+    text-align: center;
+    @include media-up(md) {
+      width: calc(50% - 1.25rem);
+      margin: 0 auto 20px;
+    }
+    &:after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 24px;
+      display: block;
+      width: 16px;
+      height: 13px;
+      margin: auto;
+      background: svgUrlFunc(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="#{$white}"><!--! Font Awesome Pro 6.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M438.6 278.6l-160 160C272.4 444.9 264.2 448 256 448s-16.38-3.125-22.62-9.375c-12.5-12.5-12.5-32.75 0-45.25L338.8 288H32C14.33 288 .0016 273.7 .0016 256S14.33 224 32 224h306.8l-105.4-105.4c-12.5-12.5-12.5-32.75 0-45.25s32.75-12.5 45.25 0l160 160C451.1 245.9 451.1 266.1 438.6 278.6z"/></svg>'
+        )
+        center/ cover no-repeat;
+    }
+  }
+}
+
+//フォームSTEP
+.rwd002-formflow {
+  counter-reset: number;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 2em auto 1em;
+  padding: 0;
+  list-style: none;
+  @include media-up(md) {
+    margin: 4rem -6.3% 1em;
+  }
+  &__item {
+    counter-increment: number;
+    position: relative;
+    display: flex;
+    justify-content: flex-end;
+    flex-direction: column;
+    min-width: 14.285%;
+    margin: 0;
+    padding: 0;
+    font-size: $font-size-lg;
+    line-height: 1.5;
+    text-align: center;
+    white-space: nowrap;
+    @include media-down(sm) {
+      flex-direction: column;
+      margin: 0 12px;
+      font-size: $font-size-base;
+      height: auto;
+    }
+    &:before {
+      --size: 2.6875rem;
+      content: counter(number);
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--size);
+      height: var(--size);
+      background: #c3c3c3;
+      border-radius: 50%;
+      margin: 0 auto;
+      font-family: "Roboto", $font-family-sans-serif;
+      font-size: 1.25rem;
+      color: $white;
+      @include media-down(sm) {
+        font-size: $font-size-base;
+        --size: 2.3em;
+      }
+    }
+    &.current:before {
+      background: $gray-800;
+    }
+    &:not(:last-child):after {
+      content: "";
+      position: relative;
+      top: 1.5rem;
+      left: calc(50% + 12px);
+      height: 3px;
+      background-color: #c3c3c3;
+      order: -1;
+      @include media-down(sm) {
+        top: 1.3em;
+      }
+    }
+  }
+
+  &__desc {
+    display: block;
+    padding-top: 0.875rem;
+    font-weight: $font-weight-bold;
+    color: #555555;
+  }
+}
+
+.rwd002-formlist {
+  margin-bottom: 5rem;
+  @include media-down(sm) {
+    margin-bottom: 3rem;
+  }
+  &__row {
+    display: flex;
+    align-items: flex-start;
+    @include media-down(md) {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    & + & {
+      margin-top: 2.1875rem;
+    }
+  }
+}
+
+.rwd002-formitem {
+  margin-bottom: 1.5em;
+  &:last-child {
+    margin-bottom: 0;
+  }
+  hr {
+    width: 100%;
+  }
+  &__label {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 25%;
+    padding-right: 1em;
+    @include media-down(md) {
+      width: 100%;
+      margin-bottom: 1em;
+    }
+    @include media-up(lg) {
+      flex-shrink: 0;
+      margin: 0.9em 0;
+      &.is-radio,
+      &.is-checkbox{
+        margin: 0;
+      }
+    }
+    span {
+      font-weight: $font-weight-bold;
+      color: tint($dark, 10%);
+    }
+  }
+  &__require {
+    margin: 0 0.8em 0 0;
+    span {
+      display: block;
+      border-radius: 2px;
+      font-size: 0.8125rem;
+      letter-spacing: 0.1em;
+      text-indent: 0.1em;
+      padding: 0.1em 0.8em;
+      white-space: nowrap;
+    }
+    span.is-required {
+      background-color: #d24123;
+      color: $white;
+    }
+    span.is-optional {
+      background-color: tint($black, 91.6%);
+      color: tint($dark, 15%);
+    }
+  }
+  &__body {
+    flex-grow: 1;
+    input,
+    textarea,
+    select[multiple] {
+      @extend .form-control;
+      margin: 0 0 1rem;
+      &:first-child {
+        margin-top: 0;
+      }
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    input[type="file"] {
+      margin-bottom: 0;
+    }
+    input[type="text"]:focus:invalid,
+    input[type="email"]:focus:invalid,
+    textarea:focus:invalid {
+      background-color: #fae3e5;
+    }
+    .addressZip {
+      display: flex;
+      align-items: stretch;
+      flex-wrap: nowrap;
+      position: relative;
+      > label {
+        position: absolute;
+        margin: 0;
+        top: 0.9em;
+        left: 0.55em;
+        color: #707070;
+        z-index: 4;
+      }
+      > input{
+        width: auto;
+        flex-grow: 0;
+      }
+    }
+    .textZip {
+      padding-left: 1.7em;
+      max-width: 100%;
+      margin: 0;
+    }
+    .zip2addr {
+      @extend .btn;
+      @extend .btn-sm;
+      @extend .btn-dark;
+      margin-left: 0.5em;
+      @include media-down(sm) {
+        font-size: $font-size-sm;
+        white-space: nowrap;
+      }
+    }
+    input[name="GetAdrs"] {
+      margin-top: 0;
+    }
+  }
+  &__notice {
+    display: block;
+    margin-top: 0.5em;
+  }
+  .captionTxt {
+    margin: 0.5em 0;
+    font-size: 0.8em;
+    letter-spacing: 0.12em;
+  }
+
+  &__input + &__notice,
+  &__textarea + &__notice {
+    margin-top: -0.3em;
+  }
+
+  &__check,
+  &__radio {
+    @extend .form-check;
+    @extend .form-check-inline;
+    margin: 0 1em 0 0;
+    padding: 0;
+    input[type="radio"],
+    input[type="checkbox"] {
+      @extend .form-check-input;
+      margin: 0 0.875rem 0 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      border-color: #e4e4e4;
+      font-size: 1.375rem;
+      &:checked {
+        background-color: #818181;
+        border-color: #818181;
+      }
+    }
+    label {
+      @extend .form-check-label;
+    }
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+
+  &__select {
+    display: inline-block;
+    select {
+      @extend .form-select;
+      width: auto;
+    }
+  }
+}
+
+.rwd002-ExplainSSL{
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: $font-size-sm;
+  line-height: 2;
+  font-feature-settings: "palt";
+  letter-spacing: 0.08em;
+  &__accordion-btn{
+    @extend .btn-icon-bottom-angle;
+    width: 100%;
+    padding: 1em;
+    margin-bottom: 1em;
+    border: solid tint($body-color, 75%);
+    border-width: 1px 0;
+    border-radius: 0;
+    font-weight: $font-weight-normal;
+    background-color: transparent;
+    letter-spacing: inherit;
+  }
+  p{
+  }
+}

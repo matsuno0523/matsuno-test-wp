@@ -1,16 +1,17 @@
 // UglifyJsPluginなどのプラグインを利用するためにwebpackを読み込んでおく必要がある。
 const webpack = require('webpack');
+const ESLintPlugin = require('eslint-webpack-plugin');
 
 // output.pathに絶対パスを指定する必要があるため、pathモジュールを読み込んでおく
 const path = require('path');
 
 module.exports = {
   // エントリーポイントの設定
-  entry: './src/js/app.js',
+  entry: './src/js/index.js',
   // 出力の設定
   output: {
     // 出力するファイル名
-    filename: 'bundle.min.js',
+    filename: 'customize.min.js',
     // 出力先のパス（v2系以降は絶対パスを指定する必要がある）
     path: path.join(__dirname, 'public_html/assets/js')
   },
@@ -29,21 +30,18 @@ module.exports = {
           presets: ['@babel/preset-env']
         }
       },
-    }, {
-      // enforce: 'pre'を指定することによって
-      // enforce: 'pre'がついていないローダーより早く処理が実行される
-      // 今回はbabel-loaderで変換する前にコードをチェックしたいため、指定が必要
-      enforce: 'pre',
-      test: /\.js$/,
-      exclude: /node_modules/,
-      loader: 'eslint-loader',
     }],
   },
   // プラグインの設定
   plugins: [
+    new ESLintPlugin(),
     new webpack.ProvidePlugin({
       $: 'jquery',
-      jQuery: 'jquery'
     }),
   ],
+  resolve: {
+    alias: {
+      'vue': 'vue/dist/vue.esm-bundler.js'
+    }
+  }
 };

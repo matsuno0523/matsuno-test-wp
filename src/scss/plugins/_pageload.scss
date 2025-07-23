@@ -1,0 +1,6 @@
+html.is-pageload-available body{
+  transition: opacity 0.2s ease-in-out;
+}
+html.is-pageload-available.is-loading body{
+  opacity: 0;
+}

@@ -1,0 +1,174 @@
+@use '../foundation/forward' as *;
+@use '../foundation/bootstrap';
+$gnav-height-md: 120px;
+$gnav-height-xs: 55px;
+
+#allbox {
+  // ナビバーが画面固定されたときのクリアランス
+  @include media-down(lg) {
+    padding-top: 120px;
+  }
+  @include media-down(md) {
+    padding-top: 55px;
+  }
+}
+
+.rwd002-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  padding-left: map-get($spacers, 3);
+  padding-right: 0;
+  box-shadow: 0 0 10px rgba($black, 7%);
+
+  @include media-up(md) {
+    padding-left: map-get($spacers, 4);
+  }
+
+  @include media-up(lg) {
+    position: relative;
+    padding-left: min(map-get($spacers, 5), 5vw);
+    padding-right: min(map-get($spacers, 5), 5vw);
+  }
+
+  @include media-down(lg) {
+    position: fixed;
+    height: 120px;
+    top: 0;
+    background-color: $white;
+    z-index: 100;
+    overflow: hidden;
+  }
+
+  @include media-down(md) {
+    height: 55px;
+  }
+
+  &__logo {
+    flex-grow: 1;
+    margin: 0;
+    max-height: 100%;
+
+    &.is-img,
+    &.is-text {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: map-get($spacers, 2);
+      padding-bottom: map-get($spacers, 2);
+
+      @include media-down(lg) {
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+
+    }
+
+    &.is-img {
+      @include media-down(lg) {
+        height: 100%;
+        img {
+          display: block;
+          object-fit: contain;
+          max-height: 100%;
+        }
+      }
+    }
+
+    &.is-img:hover,
+    &.is-img:focus,
+    &.is-text:hover,
+    &.is-text:focus {
+      @include hoverOpacity;
+    }
+  }
+
+  &__logo-link {
+    &:hover,
+    &:focus {
+      text-decoration: none;
+    }
+    .is-img & {
+      display: block;
+      @include media-down(lg) {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding-top: map-get($spacers, 1);
+        padding-bottom: map-get($spacers, 1);
+        height: 100%;
+      }
+    }
+    .is-text & {
+      display: inline-flex;
+      flex-direction: column;
+      line-height: 1.8;
+      letter-spacing: 0.2em;
+      font-feature-settings: "palt";
+      font-size: 2rem;
+      small {
+        font-size: $font-size-sm;
+        line-height: 1.2;
+        letter-spacing: 0.05em;
+        color: fade-out($body-color, 0.45);
+      }
+      @include media-down(lg) {
+        font-size: $font-size-base;
+        line-height: 1.5;
+        small{
+          display: none;
+        }
+      }
+    }
+  }
+
+}
+
+.rwd002-header__drawerBtn {
+  @extend .btn;
+  height: 100%;
+  position: relative;
+  z-index: 101;
+  
+  @include media-down(lg) {
+    width: 100px;
+    background-color: fade-out($white, 0.5);
+  }
+
+  @include media-down(md) {
+    width: 55px;
+  }
+
+  &:focus {
+    box-shadow: none;
+  }
+
+  @include media-up(lg) {
+    display: none;
+  }
+
+  &__bars {
+    stroke: $body-color;
+  }
+
+  &__bar01,
+  &__bar02,
+  &__bar03 {
+    transform-origin: center;
+    transition: $transition-base;
+  }
+
+  .is-active &__bar01 {
+    transform: rotate(135deg) translateY(50%);
+  }
+
+  .is-active &__bar02 {
+    transform: rotate(45deg);
+    opacity: 0;
+  }
+
+  .is-active &__bar03 {
+    transform: rotate(225deg) translateY(-50%);
+  }
+}

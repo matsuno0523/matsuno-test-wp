@@ -1,0 +1,54 @@
+@use '../foundation/forward' as *;
+@use '../components/typography';
+.rwd002-privacy {
+  &__entry {
+    @extend %text-entry-body;
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 1.875rem;
+    @include media-down(sm) {
+      padding-left: 1.6875rem;
+      padding-right: 1.6875rem;
+    }
+    h3, b, strong {
+      position: relative;
+      display: block;
+      margin: 1.2rem -1.875rem 1.25rem;
+      padding: 3.75rem 1.875rem 0;
+      border-top: 1px solid #E9E9E9;
+      font-weight: $font-weight-bold;
+      font-size: $font-size-lg;
+      line-height: 1.7;
+      color: $gray-800;
+      @include media-down(sm) {
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: 0;
+        padding-right: 0;
+      }
+      &:before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        display: block;
+        width: 304px;
+        height: 1px;
+        background: #C0C1C1;
+        z-index: 1;
+        @include media-down(sm) {
+          width: 152px;
+        }
+      }
+    }
+
+    strong, b {
+      display: inline-block;
+      width: calc(100% + 3.75rem);
+      @include media-down(sm) {
+        width: 100%;
+      }
+    }
+  }
+}

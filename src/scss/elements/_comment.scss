@@ -1,0 +1,242 @@
+@use '../foundation/_forward' as *;
+@use '../foundation/bootstrap';
+@use '../components/button';
+.rwd002-comment {
+  margin-top: map-get($spacers, 6);
+  margin-bottom: map-get($spacers, 6);
+  padding-left: map-get($spacers, 4);
+  padding-right: map-get($spacers, 4);
+
+  @include media-down(md) {
+    padding-left: map-get($spacers, 3);
+    padding-right: map-get($spacers, 3);
+  }
+
+  &__head,
+  &__list,
+  &__form {
+    width: 100%;
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  &__count {
+    text-align: right;
+    font-family: "Roboto", $font-family-sans-serif;
+    color: $secondary;
+    letter-spacing: 0.2em;
+    font-weight: $font-weight-medium;
+    margin-bottom: map-get($spacers, 3);
+    .num {
+      display: inline-block;
+      margin-left: 0.3em;
+      font-weight: $font-weight-light;
+      background-color: $body-color;
+      color: $white;
+      padding: 0.25em 0.45em;
+      line-height: 1;
+      letter-spacing: 0;
+      border-radius: 0.5em 0.5em 0.5em 1px;
+    }
+  }
+
+  &__list {
+    margin-top: map-get($spacers, 3);
+    margin-bottom: map-get($spacers, 5);
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    margin: 0;
+    padding: 1.75em 0;
+    border: solid tint($body-color, 86%);
+    border-width: 2px 0;
+    @include media-down(md) {
+      padding: 1.3em 0;
+    }
+  }
+
+  &__item + &__item {
+    border-top-width: 0;
+  }
+
+  &__item-head,
+  &__item-body {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    font-feature-settings: "palt";
+  }
+
+  &__item-head {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 0.5em;
+    @include media-down(md) {
+      margin-bottom: 0.2em;
+    }
+    .name {
+      margin: 0 1em 0 0;
+      font-weight: $font-weight-bold;
+      letter-spacing: 0.12em;
+      @include media-down(lg) {
+        font-size: $font-size-sm;
+      }
+    }
+    a[href^="mailto:"] {
+      color: $secondary;
+      margin-left: 0.3em;
+      transition: $transition-base;
+      &:hover,
+      &:focus {
+        color: $body-color;
+      }
+    }
+    .date {
+      margin-left: auto;
+      margin-bottom: 0.5em;
+      font-family: "Roboto", $font-family-sans-serif;
+      font-size: $font-size-base * 0.8125;
+      letter-spacing: 0.1em;
+      color: tint($body-color, 50%);
+      white-space: nowrap;
+      @include media-down(md) {
+        font-size: $font-size-xs;
+        text-align: right;
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  &__item-body {
+    font-size: $font-size-sm;
+    line-height: 2;
+    letter-spacing: 0.14em;
+    p:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__form {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  &__form-row {
+    @include media-up(md) {
+      display: flex;
+    }
+    dt {
+      flex-shrink: 0;
+      flex-basis: 15%;
+      margin: 0.9em 0;
+      letter-spacing: 0.05em;
+      @include media-down(md) {
+        margin: 0.5em 0;
+      }
+    }
+    dd {
+      flex-grow: 1;
+    }
+    .form-control:focus:invalid {
+      background-color: #fae3e5;
+    }
+    .comment-notice {
+      margin: 1.5em 0;
+      font-feature-settings: "palt";
+      letter-spacing: 0.04em;
+      line-height: 1.8;
+      color: tint($body-color, 20%);
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    .comment-notice + .comment-notice {
+      margin-top: -1.5em;
+    }
+  }
+
+  &__form-captchaImg {
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    max-width: 100%;
+  }
+
+  &__form-btnwrap {
+    display: flex;
+    justify-content: center;
+    margin-top: map-get($spacers, 4);
+  }
+
+  &__form-btn {
+    @extend .btn;
+    @extend .btn-primary;
+    position: relative;
+    padding: 2em 1em;
+    width: 100%;
+    max-width: 500px;
+    letter-spacing: 0.1em;
+    text-indent: 0.1em;
+    @include media-up(lg) {
+      font-size: $font-size-lg;
+    }
+    @include media-down(lg) {
+      padding: 1.5em 1em;
+    }
+    &:after {
+      position: absolute;
+      right: 2em;
+      top: calc(50% - 0.5em);
+      content: "";
+      height: 1em;
+      width: 1em;
+      background: svgUrlFunc(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Pro 6.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path fill="#{$white}" d="M438.6 278.6l-160 160C272.4 444.9 264.2 448 256 448s-16.38-3.125-22.62-9.375c-12.5-12.5-12.5-32.75 0-45.25L338.8 288H32C14.33 288 .0016 273.7 .0016 256S14.33 224 32 224h306.8l-105.4-105.4c-12.5-12.5-12.5-32.75 0-45.25s32.75-12.5 45.25 0l160 160C451.1 245.9 451.1 266.1 438.6 278.6z"/></svg>'
+        )
+        no-repeat center center / contain;
+    }
+  }
+}
+
+.rwd002-comment__modal {
+  .btn-close{
+    background-image: svgUrlFunc('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Pro 6.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path fill="#{$body-color}" d="M310.6 361.4c12.5 12.5 12.5 32.75 0 45.25C304.4 412.9 296.2 416 288 416s-16.38-3.125-22.62-9.375L160 301.3L54.63 406.6C48.38 412.9 40.19 416 32 416S15.63 412.9 9.375 406.6c-12.5-12.5-12.5-32.75 0-45.25l105.4-105.4L9.375 150.6c-12.5-12.5-12.5-32.75 0-45.25s32.75-12.5 45.25 0L160 210.8l105.4-105.4c12.5-12.5 32.75-12.5 45.25 0s12.5 32.75 0 45.25l-105.4 105.4L310.6 361.4z"/></svg>');
+  }
+  &-header {
+    border-bottom: none;
+    .modal-title{
+      font-weight: $font-weight-bold;
+      font-size: $font-size-base * 1.5625;
+      letter-spacing: 0.18em;
+      @include media-down(md) {
+        font-size: $font-size-lg;
+      }
+    }
+  }
+  &-dialog {
+    max-width: 800px;
+  }
+  &-footer {
+    border-top: none;
+    justify-content: center;
+    .btn{
+      @extend .btn-icon-right-angle-white;
+      position: relative;
+      width: 250px;
+      max-width: calc(50% - 0.5em);
+      padding: 1em;
+    }
+  }
+  &-body {
+    padding-top: 0;
+    padding-bottom: 0;
+    .rwd002-comment__list {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+  }
+}

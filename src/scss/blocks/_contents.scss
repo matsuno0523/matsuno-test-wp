@@ -1,0 +1,730 @@
+@use '../foundation/_forward' as *;
+@use '../foundation/bootstrap';
+// block 基本スタイル
+.rwd002-block-content {
+  // @include list-common;
+}
+.rwd002-block-content__item {
+  // @include list-common__item;
+}
+
+/**
+ * イメージ画像　横並び
+ */
+.is-block-1 .rwd002-block-content,
+.is-block-11 .rwd002-block-content {
+  &__list {
+    @extend .row;
+    @extend .g-2;
+    @extend .g-md-3;
+    margin-bottom: map-get($spacers, 5);
+    .is-side &{
+      @extend .g-xl-1;
+      @include media-up(xl) {
+        margin-bottom: map-get($spacers, 4);
+      }
+    }
+  }
+
+  &__item {
+    @extend .col-6;
+    @extend .col-lg-3;
+    .is-side &{
+      @extend .col-xl-4;
+    }
+  }
+}
+
+/**
+ * イメージ画像＋タイトル　横並び
+ */
+.is-block-2 .rwd002-block-content,
+.is-block-12 .rwd002-block-content {
+  &__list {
+    @extend .row;
+    @extend .gx-2;
+    @extend .gy-3;
+    @extend .gx-md-3;
+    @extend .gy-md-4;
+    margin-bottom: map-get($spacers, 5);
+    .is-side &{
+      @extend .gy-xl-1;
+      @include media-up(xl) {
+        margin-bottom: map-get($spacers, 4);
+      }
+    }
+  }
+  
+  .is-side &__link{
+    @include media-up(xl) {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  &__thumb {
+    margin-bottom: 1.2em;
+    @include media-up(xl) {
+      .is-side &{
+        flex-shrink: 0;
+        align-self: flex-start;
+        width: 100px;
+        margin-right: 1.15rem;
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  &__item {
+    @extend .col-6;
+    @extend .col-lg-3;
+
+    .is-side &{
+      @extend .col-xl-12;
+    }
+
+    .title {
+      font-size: $font-size-base;
+      @include media-up(md) {
+        font-size: 1.25rem;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.9375rem; // 15px
+        }
+        .is-main &{
+          font-size: $font-size-base;
+        }
+      }
+    }
+
+    .desc {
+      font-size: $font-size-base * 0.9375; // 15px
+      @include media-down(md) {
+        font-size: 0.8125rem; // 13px
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.8125rem; // 13px
+        }
+        .is-main &{
+          font-size: $font-size-sm;
+        }
+      }
+    }
+
+    .cate {
+      @include media-up(xl) {
+        .is-side &{
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * イメージ画像＋タイトル　２列
+ */
+.is-block-3 .rwd002-block-content,
+.is-block-13 .rwd002-block-content {
+  &__list {
+    @extend .row;
+    @extend .g-2;
+    @extend .g-md-3;
+    margin-bottom: map-get($spacers, 5);
+    .is-side &{
+      @extend .g-xl-1;
+      @include media-up(xl) {
+        display: block;
+        margin-top: 0;
+        margin-bottom: map-get($spacers, 4);
+      }
+    }
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+  }
+
+  &__thumb {
+    flex-shrink: 0;
+    align-self: flex-start;
+    width: calc(50% - map-get($gutters, 2) / 2);
+    margin-right: calc($grid-gutter-width - 5px);
+    @include media-down(lg) {
+      margin-right: min(5vw, $grid-gutter-width);
+    }
+    @include media-up(xl) {
+      .is-side &{
+        width: 100px;
+        margin-right: 1.15rem;
+      }
+    }
+  }
+
+  &__body {
+    flex: 1 1 auto;
+  }
+
+  &__item {
+    @extend .col-12;
+    @extend .col-lg-6;
+
+    .is-side &{
+      @extend .col-xl-12;
+    }
+
+    .title {
+      font-size: 1.125rem; // 18px
+      @include media-up(md) {
+        font-size: 1.5625rem; // 25px
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.9375rem; // 15px
+        }
+        .is-main &{
+          font-size: $font-size-lg;
+        }
+      }
+    }
+
+    .desc {
+      @include media-down(md) {
+        font-size: 0.8125rem; // 13px
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.8125rem; // 13px
+          font-weight: $font-weight-normal;
+        }
+        .is-main &{
+          font-size: $font-size-sm;
+          font-weight: $font-weight-normal;
+        }
+      }
+    }
+
+    .cate {
+      @include media-down(md) {
+        margin-right: 0;
+        max-width: calc(50vw - map-get($spacers, 3) - map-get($gutters, 3));
+      }
+      @include media-up(xl) {
+        .is-side &{
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * イメージ画像小＋タイトル　２列
+ */
+.is-block-8 .rwd002-block-content,
+.is-block-18 .rwd002-block-content {
+  &__list {
+    @extend .row;
+    @extend .g-2;
+    @extend .g-md-3;
+    margin-bottom: map-get($spacers, 5);
+    .is-side &{
+      @extend .g-xl-1;
+      @include media-up(xl) {
+        margin-top: 0;
+        margin-bottom: map-get($spacers, 4);
+        display: block;
+      }
+    }
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+  }
+
+  &__thumb {
+    flex-shrink: 0;
+    align-self: flex-start;
+    width: min(180px, 22.4vw);
+    margin-right: calc($grid-gutter-width - 5px);
+    @include media-down(md) {
+      margin-right: calc($grid-gutter-width * 0.75);
+    }
+    @include media-up(xl) {
+      .is-side &,
+      .is-main &{
+        width: 100px;
+        margin-right: 1.15rem;
+      }
+    }
+  }
+
+  &__body {
+    flex: 1 1 auto;
+  }
+
+  &__item {
+    @extend .col-12;
+    @extend .col-lg-6;
+
+    .is-side &{
+      @extend .col-xl-12;
+    }
+    .title {
+      font-size: 1rem;
+      @include media-up(md) {
+        font-size: 1.25rem;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.9375rem; // 15px
+        }
+        .is-main &{
+          font-size: $font-size-lg;
+        }
+      }
+    }
+
+    .desc {
+      @include media-down(md) {
+        font-size: 0.8125rem; // 13px
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.8125rem; // 13px
+          font-weight: $font-weight-normal;
+        }
+        .is-main &{
+          font-size: $font-size-sm;
+          font-weight: $font-weight-normal;
+        }
+      }
+    }
+
+    .cate {
+      @include media-down(md) {
+        margin-right: 0;
+        max-width: calc(50vw - map-get($spacers, 3) - map-get($gutters, 3));
+      }
+      @include media-up(xl) {
+        .is-side &{
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * イメージ画像＋タイトル＋本文
+ */
+.is-block-4 .rwd002-block-content,
+.is-block-14 .rwd002-block-content {
+  &__list {
+    margin-bottom: map-get($spacers, 5);
+    @include media-up(xl) {
+      .is-side &{
+        margin-bottom: map-get($spacers, 2);
+      }
+    }
+  }
+
+  &__link {
+    @include media-up(md) {
+      display: flex;
+      align-items: center;
+    }
+    @include media-down(md) {
+      display: block;
+    }
+  }
+
+  &__thumb {
+    flex-shrink: 0;
+    align-self: flex-start;
+    @include media-up(md) {
+      width: min(514px, 50%);
+      margin-right: calc($grid-gutter-width - 5px);
+    }
+    @include media-down(md) {
+      width: 100%;
+      margin-right: calc($grid-gutter-width * 0.75);
+      margin-bottom: 1em;
+    }
+    @include media-up(xl) {
+      .is-side &{
+        width: 100px;
+        margin-right: 1.15rem;
+      }
+      .is-main &{
+        width: calc(50% - 1em);
+      }
+    }
+  }
+
+  &__body {
+    flex: 1 1 auto;
+  }
+
+  &__item {
+    margin-top: map-get($gutters, 3);
+    @include media-down(lg) {
+      margin-top: map-get($gutters, 4);
+    }
+
+    .title {
+      font-size: 1.125rem;
+      @include media-up(md) {
+        font-size: 1.5625rem; // 25px
+      }
+      @include media-up(lg) {
+        font-size: 1.875rem; // 30px
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.9375rem; // 15px
+        }
+        .is-main &{
+          font-size: 1.75rem; // 28px
+        }
+      }
+    }
+
+    .desc,
+    .body {
+      font-size: $font-size-sm;
+      @include media-up(md) {
+        font-size: $font-size-base;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.8125rem; // 13px
+        }
+      }
+    }
+
+    .cate {
+      @include media-down(md) {
+        margin-right: 0;
+        max-width: calc(50vw - map-get($spacers, 3) - map-get($gutters, 3));
+      }
+    }
+
+    .is-main & .price{
+      @include media-up(xl) {
+        font-size: 1.5625rem;
+        &.is-regular {
+          font-size: 0.875rem;
+        }
+      }
+    }
+    .is-main & .taxtxt {
+      @include media-up(xl) {
+        font-size: 0.875rem;
+      }
+    }
+  }
+}
+
+/**
+ * イメージ画像小＋タイトル＋本文
+ */
+.is-block-7 .rwd002-block-content,
+.is-block-17 .rwd002-block-content {
+  &__list {
+    margin-bottom: map-get($spacers, 5);
+    @include media-up(xl) {
+      .is-side &{
+        margin-bottom: map-get($spacers, 4);
+      }
+    }
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+  }
+
+  &__thumb {
+    flex-shrink: 0;
+    align-self: flex-start;
+    width: min(180px, 22.4vw);
+    margin-right: calc($grid-gutter-width - 5px);
+    @include media-down(lg) {
+      margin-right: min(5vw, $grid-gutter-width);
+    }
+    @include media-up(xl) {
+      .is-side &{
+        width: 100px;
+        margin-right: 1.15rem;
+      }
+    }
+  }
+
+  &__body {
+    flex: 1 1 auto;
+  }
+
+  &__item {
+    margin-top: map-get($gutters, 4);
+    @include media-up(xl) {
+      .is-side &{
+        margin-top: map-get($gutters, 2);
+      }
+    }
+
+    .title {
+      font-size: $font-size-base;
+      @include media-up(md) {
+        font-size: 1.25rem;
+      }
+      @include media-up(lg) {
+        font-size: 1.5625rem; // 25px
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.9375rem; // 15px
+        }
+      }
+    }
+
+    .date {
+      @include media-down(md) {
+        display: block;
+        font-size: 0.8125rem;
+        margin-bottom: 0.5em;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          display: block;
+        }
+      }
+    }
+
+    .cate {
+      @include media-down(md) {
+        margin-right: 0;
+        max-width: calc(50vw - map-get($spacers, 3) - map-get($gutters, 3));
+        margin-bottom: 0.75em;
+      }
+    }
+
+    .desc,
+    .body {
+      font-size: $font-size-sm;
+      @include media-up(md) {
+        font-size: $font-size-base;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.8125rem; // 13px
+        }
+      }
+    }
+  }
+}
+
+/**
+ * タイトル＋本文
+ */
+.is-block-5 .rwd002-block-content,
+.is-block-15 .rwd002-block-content {
+  &__list {
+    margin-top: -1 * map-get($gutters, 2);
+    margin-bottom: map-get($spacers, 5);
+    @include media-up(xl) {
+      .is-side &{
+        margin-bottom: map-get($spacers, 2);
+      }
+    }
+  }
+
+  &__link {
+    padding: map-get($gutters, 2) 0;
+    @include media-up(xl) {
+      .is-side &{
+        padding: map-get($gutters, 1) 0;
+      }
+    }
+  }
+
+  &__item {
+    .title {
+      font-size: $font-size-base;
+      @include media-up(md) {
+        font-size: 1.125rem; // 18
+      }
+      @include media-up(lg) {
+        font-size: 1.25rem; // 20px
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.9375rem; // 15px
+        }
+      }
+    }
+
+    .date {
+      @include media-down(md) {
+        display: block;
+        font-size: 0.8125rem;
+        margin-bottom: 0.5em;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          display: block;
+        }
+      }
+    }
+
+    .cate {
+      @include media-down(md) {
+        margin-right: 0;
+        max-width: calc(50vw - map-get($spacers, 3) - map-get($gutters, 3));
+        margin-bottom: 0.75em;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: 0.8125rem; // 13px
+        }
+      }
+    }
+
+    .desc,
+    .body {
+      font-weight: $font-weight-base;
+      font-size: $font-size-sm;
+      @include media-up(md) {
+        font-size: $font-size-base;
+      }
+      @include media-up(xl) {
+        .is-side &{
+          font-size: $font-size-sm; // 14px
+        }
+      }
+    }
+  }
+
+  &__item + .rwd002-block-content__item {
+    border: solid #e1e1e1;
+    border-width: 1px 0 0;
+  }
+
+  &__body.is-fullArticle{
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/**
+ * 分類表示のみ（カテゴリ）
+ */
+.is-block-6.is-catlist {
+  &.rwd002-block-content {
+    .cate {
+      @extend .btn;
+      @extend .btn-outline-primary;
+      padding-left: 1.2em;
+      padding-right: 1.2em;
+      border-radius: 0;
+      margin: 1em 0.8em 0;
+      font-size: $font-size-sm;
+      @include media-down(md) {
+        margin: 1em 0.5em 0;
+      }
+    }
+    .cate.current,
+    .cate.is-all {
+      @extend .btn-primary;
+    }
+  }
+  .rwd002-block-content {
+    &__inner{
+      width: auto;
+      max-width: calc(1280px + 1em);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: -1em auto 0;
+      @include media-down(lg) {
+        margin: -1em -0.8em 0;
+      }
+      @include media-down(md) {
+        margin: -1em -0.5em 0;
+      }
+    }
+  }
+}
+
+/**
+ * 分類表示のみ（アーカイブ）
+ */
+.is-block-6.is-archive .rwd002-block-content {
+  &__archivelist{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-bold;
+    letter-spacing: 0.14em;
+    font-feature-settings: "palt";
+    // font-family: 'Roboto', $font-family-base;
+    &__year {
+      margin-bottom: 1px;
+      &:last-child{
+        margin-bottom: 0;
+      }
+    }
+    &__year span[data-plugin="collapse"]{
+      position: relative;
+      display: block;
+      cursor: pointer;
+      padding: 0.6em 1em;
+      background-color: #f2f2f2;
+      &:after{
+        content: '年';
+      }
+      &:before{
+        position: absolute;
+        content: "";
+        top: calc(50% - 0.3em);
+        right: 0;
+        width: 2em;
+        height: 0.6em;
+        transition: all .5s ease-in-out;
+        background: center / contain no-repeat;
+        background-image: svgUrlFunc('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Pro 6.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path fill="#{$body-color}" d="M192 384c-8.188 0-16.38-3.125-22.62-9.375l-160-160c-12.5-12.5-12.5-32.75 0-45.25s32.75-12.5 45.25 0L192 306.8l137.4-137.4c12.5-12.5 32.75-12.5 45.25 0s12.5 32.75 0 45.25l-160 160C208.4 380.9 200.2 384 192 384z"/></svg>');
+      }
+      &.is-active:before{
+        transform: rotateX(180deg);
+      }
+    }
+    &__month-list{
+      list-style: none;
+      padding-left: 1em;
+    }
+    &__month a{
+      display: block;
+      padding: 0.4em 1em;
+      &:hover,&:focus{
+        text-decoration: none;
+        color: tint( $body-color, 30% );
+      }
+    }
+    &__month span{
+      &:after{
+        content: '月';
+      }
+    }
+    &__month a i{
+      font-style: normal;
+      color: $primary;
+      margin-left: 0.5em;
+    }
+  }
+}

@@ -1,0 +1,55 @@
+// webfont
+@use "@fortawesome/fontawesome-free/scss/fontawesome" with (
+  $fa-font-path: "../assets/webfonts",
+);
+@use "@fortawesome/fontawesome-free/scss/solid" as fa-solid;
+@use "@fortawesome/fontawesome-free/scss/regular" as fa-regular;
+@use "@fortawesome/fontawesome-free/scss/brands" as fa-brands;
+
+// import Swiper styles
+// @use '../../node_modules/swiper/swiper-bundle.min';
+
+// layout
+@use './layout/one-column';
+// @use './layout/two-column';
+
+// components
+@use 'components/title';
+@use 'components/button';
+@use 'components/typography';
+@use 'components/itemlist';
+
+// elements
+@use 'elements/header';
+@use 'elements/gnav';
+@use 'elements/footer';
+@use 'elements/fixnav';
+@use 'elements/mainvisual';
+@use 'elements/breadcrumbs';
+@use 'elements/pagination';
+@use 'elements/moduletitle';
+@use 'elements/list';
+@use 'elements/detail';
+@use 'elements/comment';
+
+// blocks
+@use 'blocks/concept';
+@use 'blocks/contact';
+@use 'blocks/contents';
+@use 'blocks/banner';
+@use 'blocks/freearea';
+
+
+// plugin
+@use 'plugins/lazydisp';
+@use 'plugins/pageload';
+// @use 'plugins/editor_template_custom';
+// @use '../../node_modules/lity/dist/lity.min';
+
+// pages
+@use 'pages/profile';
+@use 'pages/privacy';
+@use 'pages/sitemap';
+@use 'pages/search';
+@use 'pages/shopguide';
+@use 'pages/form';

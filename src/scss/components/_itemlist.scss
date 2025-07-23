@@ -1,0 +1,348 @@
+@use '../foundation/_forward' as *;
+@use '../foundation/bootstrap';
+@use '../components/button';
+@use "sass:map";
+// 一覧表示基本スタイル（ブロックでも使用）
+.list-common {
+  margin-top: map.get($spacers, 6);
+  margin-bottom: map.get($spacers, 6);
+  padding-left: map.get($spacers, 4);
+  padding-right: map.get($spacers, 4);
+
+  .is-main &{
+    @include media-up(xl) {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
+  .is-side &{
+    @include media-up(xl) {
+      margin-top: map.get($spacers, 5);
+      margin-bottom: map.get($spacers, 5);
+    }
+  }
+
+  @include media-down(md) {
+    padding-left: map.get($spacers, 3);
+    padding-right: map.get($spacers, 3);
+  }
+  
+  &__inner {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  &__title {
+    position: relative;
+    padding-top: 1.8em;
+    margin-bottom: 1.8em;
+    font-size: 1.875rem;
+    font-weight: $font-weight-bold;
+    letter-spacing: 0.18em;
+    font-feature-settings: "palt";
+    @include media-down(md) {
+      font-size: 1.375rem;
+    }
+    &:after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1.5em;
+      height: 1px;
+      background-color: $body-color;
+    }
+    .is-side &{
+      @include media-up(xl) {
+        display: flex;
+        align-items: center;
+        font-size: $font-size-lg;
+        &:after{
+          width: 100%;
+        }
+      }
+    }
+  }
+  &__title-link{
+    display: none;
+    .is-side &{
+      @extend .btn;
+      @extend .btn-sm;
+      @extend .btn-link;
+      display: none;
+      font-size: $font-size-xs;
+      white-space: nowrap;
+      letter-spacing: 0.1em;
+      margin-left: 1.5em;
+      text-decoration: underline;
+      @include media-up(xl) {
+        display: inline-block;
+      }
+    }
+  }
+
+  &__catName {
+    margin-bottom: 2em;
+    font-weight: $font-weight-bold;
+    font-size: 1.375rem;
+    letter-spacing: 0.1em;
+    font-feature-settings: "palt";
+    border-bottom: 1px solid;
+    > a {
+      display: block;
+      padding: 0.5em 0;
+      transition: $transition-base;
+      &:hover,
+      &:focus {
+        text-decoration: none;
+        color: $primary;
+      }
+    }
+    .is-side &{
+      @include media-up(xl) {
+        font-size: $font-size-lg;
+        margin-bottom: 1.5em;
+        border-bottom-color: tint($body-color, 80%);
+      }
+    }
+  }
+  &__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  &__thumb {
+    @extend .ratio;
+    @extend .ratio-1x1;
+    overflow: hidden;
+    margin: 0;
+  }
+  &__thumb-img {
+    object-fit: cover;
+    transition: $transition-base;
+  }
+  &__link:hover &__thumb-img,
+  &__link:focus &__thumb-img {
+    transform: scale(1.1);
+  }
+
+  &__link {
+    display: block;
+    transition: $transition-base;
+    &:hover,
+    &:focus {
+      color: $primary;
+      text-decoration: none;
+      .date,
+      .cate,
+      .title.is-new:after,
+      .price,
+      .price.is-regular,
+      .comment {
+        color: inherit;
+      }
+    }
+  }
+
+  &__btnwrap {
+    display: flex;
+    justify-content: center;
+    .is-side &{
+      @include media-up(xl) {
+        display: none;
+      }
+    }
+  }
+
+  &__btn {
+    @extend .btn;
+    @extend .btn-outline-primary;
+    @extend .btn-icon-right-angle;
+    @extend .rounded-pill;
+    width: 100%;
+    max-width: 252px;
+    padding-top: 1em;
+    padding-bottom: 1em;
+    font-feature-settings: "palt";
+    letter-spacing: 0.18em;
+    font-weight: 500;
+    font-family: "Roboto", $font-family-sans-serif;
+    font-size: $font-size-base;
+    @include media-down(md) {
+      font-size: $font-size-sm;
+    }
+  }
+
+}
+
+// アイテム表示基本スタイル（ブロックでも使用）
+.list-common__item {
+  font-feature-settings: "palt";
+  word-break: break-all;
+
+  .date {
+    display: inline-block;
+    padding-top: 0.2em;
+    padding-bottom: 0.2em;
+    margin-right: 1em;
+    margin-bottom: 0.5em;
+    font-size: $font-size-sm;
+    letter-spacing: 0.1em;
+    color: $secondary;
+    font-family: "Roboto", $font-family-sans-serif;
+    .is-side &{
+      @include media-up(xl) {
+        padding: 0;
+        font-size: 0.8125rem; // 13px
+      }
+    }
+  }
+
+  .cate {
+    @extend .text-truncate;
+    display: inline-block;
+    min-width: max(9em, 135px);
+    max-width: 100%;
+    font-size: $font-size-xs;
+    padding: 0.15em 1em;
+    margin-bottom: 0.5em;
+    border: 1px solid;
+    border-radius: $border-radius;
+    letter-spacing: 0.1em;
+    text-indent: 0.1em;
+    color: $secondary;
+    text-align: center;
+    font-weight: $font-weight-bold;
+    .is-side &{
+      @include media-up(xl) {
+        border-width: 0;
+        padding: 0;
+        font-weight: $font-weight-normal;
+        min-width: 0;
+        text-align: left;
+        text-indent: 0;
+        max-width: 180px;
+      }
+    }
+    @include media-down(md) {
+      min-width: min(70%, 100px);
+      font-size: $font-size-xs;
+    }
+  }
+  .date + .cate {
+    vertical-align: top;
+  }
+
+  .title {
+    font-weight: $font-weight-bold;
+    letter-spacing: 0.12em;
+    line-height: 1.55;
+    margin-bottom: 0.5em;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  .title.is-new:after {
+    display: inline-block;
+    content: "NEW";
+    color: $red;
+    font-family: "Roboto", $font-family-sans-serif;
+    font-weight: 500;
+    margin-left: 0.2em;
+    font-size: 0.8em;
+  }
+
+  .desc {
+    letter-spacing: 0.14em;
+    margin-bottom: 0.6em;
+    @include media-up(lg) {
+      font-weight: $font-weight-bold;
+    }
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .body {
+    letter-spacing: 0.14em;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .entry {
+    @extend .clearfix;
+  }
+
+  .price {
+    display: inline-block;
+    letter-spacing: 0.14em;
+    font-family: "Roboto", $font-family-sans-serif;
+    letter-spacing: 0.05em;
+    color: $red;
+    font-size: 1.56rem;
+    margin-bottom: 0.2em;
+    @include media-up(xl) {
+      .is-side &,
+      .is-main &{
+        font-size: 1.1875rem;
+      }
+    }
+
+    &.is-regular {
+      display: block;
+      color: tint($body-color, 50%);
+      text-decoration: line-through;
+      margin-right: 0.8em;
+      font-size: 0.875em;
+      @include media-down(md) {
+        font-size: $font-size-xs;
+      }
+    }
+
+    &.is-ask {
+      font-size: 0.875rem;
+    }
+
+    @include media-down(md) {
+      font-size: $font-size-base;
+    }
+
+    &:last-child,
+    &:nth-last-child(2) {
+      margin-bottom: 0;
+    }
+  }
+
+  .taxtxt {
+    display: inline-block;
+    margin-left: 0.3em;
+    font-size: 0.875em;
+    font-weight: $font-weight-bold;
+    letter-spacing: 0.14em;
+    @include media-up(xl) {
+      .is-side &,
+      .is-main &{
+        font-size: $font-size-xs;
+      }
+    }
+    @include media-down(md) {
+      font-size: $font-size-xs;
+    }
+  }
+
+  .comment {
+    font-family: 'Roboto', $font-family-sans-serif;
+    color: tint($body-color, 57.5%);
+    letter-spacing: 0.14em;
+    font-size: $font-size-sm;
+    @include media-down(md) {
+      font-size: $font-size-xs;
+    }
+  }
+  .comment__label + .comment__num{
+    margin-left: 0.3em;
+  }
+}

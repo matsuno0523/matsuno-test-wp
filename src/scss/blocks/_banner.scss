@@ -1,0 +1,74 @@
+@use '../foundation/_forward' as *;
+@use '../foundation/bootstrap';
+.rwd002-block-banner{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: map-get($spacers, 4);
+  margin-bottom: map-get($spacers, 4);
+  padding-left: map-get($spacers, 4);
+  padding-right: map-get($spacers, 4);
+  @include media-down(md) {
+    padding-left: map-get($spacers, 3);
+    padding-right: map-get($spacers, 3);
+  }
+
+  .is-side & {
+    margin-top: map-get($spacers, 2);
+    margin-bottom: map-get($spacers, 2);
+  }
+
+  a.is-btn{
+    @extend .btn;
+    @extend .btn-primary;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    height: 112px;
+    width: 100%;
+    max-width: 555px;
+    letter-spacing: 0.18em;
+    text-indent: 0.18em;
+    font-feature-settings: "palt";
+
+    .is-side &{
+      height: 55px;
+      font-size: $font-size-base * 0.9375; //15px
+    }
+
+    @include media-down(lg) {
+      height: 80px;
+      font-size: $font-size-base;
+    }
+
+    &:after{
+      position: absolute;
+      top: 50%;
+      right: 1em;
+      font-size: $font-size-xs;
+      content: "\f105";
+      font-family: Font Awesome\ 6 Free;
+      line-height: 0;
+    }
+
+  }
+}
+
+/**
+ * ブログボタン
+ */
+.rwd002-block-banner.is-blog {
+  a.is-btn{
+  }
+}
+
+
+/**
+ * フォームボタン
+ */
+ .rwd002-block-banner.is-form {
+  a.is-btn{
+  }
+}

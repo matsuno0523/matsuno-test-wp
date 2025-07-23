@@ -1,0 +1,85 @@
+@use '../foundation/_forward' as *;
+.rwd002-taglist{
+  margin-top: map-get($spacers, 6);
+  margin-bottom: map-get($spacers, 6);
+  padding-left: map-get($spacers, 4);
+  padding-right: map-get($spacers, 4);
+
+  .is-main &{
+    @include media-up(xl) {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+  
+  &__cats,
+  &__tags {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    font-feature-settings: "palt";
+  }
+
+  &__cats {
+    flex-wrap: wrap;
+  }
+
+  &__catBtn {
+    @extend .btn;
+    @extend .btn-outline-primary;
+    padding-left: 1.2em;
+    padding-right: 1.2em;
+    border-radius: 0;
+    margin: 1em 0.8em 0;
+    font-size: $font-size-sm;
+    @include media-down(md) {
+      margin: 1em 0.5em 0;
+    }
+    &.current {
+      @extend .btn-primary;
+    }
+  }
+
+  &__tags {
+    flex-direction: column;
+    margin-top: 1em;
+    &:first-child{
+      margin-top: 0;
+    }
+  }
+
+  &__list {
+    text-align: center;
+  }
+
+  &__btnwrap {
+    margin-top: 0.4em;
+    &:first-child{
+      margin-top: 0;
+    }
+  }
+
+  &__tagBtn {
+    @extend .btn;
+    @extend .btn-sm;
+    font-weight: $font-weight-normal;
+    font-size: $font-size-sm;
+    color: #AAAAAA;
+    letter-spacing: 0.14em;
+    @include media-down(lg) {
+      font-size: $font-size-xs;
+    }
+  }
+
+  &__tglBtn {
+    @extend .btn;
+    @extend .btn-sm;
+    &:focus{
+      box-shadow: none;
+    }
+    font-size: $font-size-base * .8125;
+  }
+}

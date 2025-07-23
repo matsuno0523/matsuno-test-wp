@@ -1,0 +1,140 @@
+@use '../foundation/_forward' as *;
+@use '../foundation/bootstrap';
+@use '../components/typography';
+.rwd002-detail {
+  margin-top: map-get($spacers, 6);
+  margin-bottom: map-get($spacers, 6);
+  padding-left: map-get($spacers, 4);
+  padding-right: map-get($spacers, 4);
+  word-break: break-all;
+
+  @include media-down(md) {
+    padding-left: map-get($spacers, 3);
+    padding-right: map-get($spacers, 3);
+  }
+
+  .is-main & {
+    margin-top: 0;
+  }
+
+  &__head,
+  &__entry,
+  &__foot {
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  &__head {
+    font-feature-settings: "palt";
+  }
+
+  &__date {
+    display: inline-block;
+    padding-top: 0.2em;
+    padding-bottom: 0.2em;
+    margin-right: 1em;
+    margin-bottom: 1.2em;
+    font-size: $font-size-sm;
+    letter-spacing: 0.1em;
+    color: $secondary;
+    font-family: "Roboto", $font-family-sans-serif;
+  }
+
+  &__category {
+    @extend .text-truncate;
+    @extend .btn;
+    @extend .btn-outline-secondary;
+    display: inline-block;
+    min-width: max(9em, 135px);
+    max-width: 100%;
+    font-size: 0.8125rem;
+    padding: 0.15em 1em;
+    margin-bottom: 1.2em;
+    letter-spacing: 0.1em;
+    text-indent: 0.1em;
+    text-align: center;
+    font-weight: $font-weight-bold;
+    @include media-down(md) {
+      min-width: min(70%, 100px);
+      font-size: $font-size-xs;
+    }
+  }
+
+  &__date + &__category {
+    vertical-align: top;
+  }
+
+  &__title {
+    font-size: $font-size-base * 1.5625;
+    line-height: 1.5;
+    letter-spacing: 0.18em;
+    font-weight: $font-weight-bold;
+    padding-bottom: 0.9em;
+    margin-bottom: map-get($spacers, 5);
+    border-bottom: 1px solid tint($body-color, 86%);
+    @include media-down(md) {
+      font-size: $font-size-lg;
+    }
+  }
+
+  &__desc {
+    font-size: $font-size-lg;
+    letter-spacing: 0.14em;
+    line-height: 1.8;
+    margin-bottom: map-get($spacers, 5);
+    @include media-down(md) {
+      font-size: $font-size-base * 0.9375;
+    }
+  }
+
+  &__title + &__desc {
+    margin-top: -1.5 * map-get($spacers, 3);
+  }
+
+  &__image {
+    display: flex;
+    justify-content: center;
+    margin-bottom: map-get($spacers, 5);
+    a {
+      display: block;
+    }
+    img {
+      max-width: 100%;
+    }
+  }
+
+  &__image-caption {
+    margin-top: 0.5em;
+    font-size: $font-size-sm;
+    letter-spacing: 0.1em;
+    color: $secondary;
+  }
+
+  &__entry {
+    @extend .clearfix;
+    @extend %text-entry-body;
+    a {
+      color: $info;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .is--detail & .editor-template {
+      font-size: $font-size-base;
+    }
+  }
+
+  &__foot {
+    margin-top: map-get($spacers, 3);
+    margin-bottom: map-get($spacers, 3);
+  }
+
+  &__edit-btn {
+    @extend .btn;
+    @extend .btn-primary;
+  }
+}
