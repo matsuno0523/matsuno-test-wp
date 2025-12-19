@@ -4,12 +4,12 @@ services:
     image: mariadb:10.5
     environment:
       MYSQL_ROOT_PASSWORD: mpcreative
-      MYSQL_DATABASE: database_name
-      MYSQL_USER: user_name
-      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: dbname
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: dbpass
     volumes:
       - db_data:/var/lib/mysql
-      - ./database_name.sql:/docker-entrypoint-initdb.d/1.sql
+      - ./dbname.sql:/docker-entrypoint-initdb.d/1.sql
     restart: always
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pmpcreative"]
@@ -24,9 +24,9 @@ services:
     environment:
       APP_ENV: docker_dev
       WORDPRESS_DB_HOST: db
-      WORDPRESS_DB_USER: user_name
-      WORDPRESS_DB_PASSWORD: password
-      WORDPRESS_DB_NAME: database_name
+      WORDPRESS_DB_USER: dbuser
+      WORDPRESS_DB_PASSWORD: dbpass
+      WORDPRESS_DB_NAME: dbname
       WORDPRESS_DEBUG: "false"
       WORDPRESS_CONFIG_EXTRA: |
         define('WP_SITEURL', 'http://localhost:8080/wp');
