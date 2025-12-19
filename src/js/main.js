@@ -1,12 +1,12 @@
-import Utility from "./class/utility";
-import CUSTOMIZE from "./extended_class/customize";
-import HOME from "./module/home";
+import Utility from "./utils/utility";
+import App from "./app";
+import HOME from "./pages/home";
 
 // ユーティリティクラスのインスタンス化
 const UTIL = new Utility();
 
 // テンプレートインスタンス化（promise登録）
-const TPL = new CUSTOMIZE();
+const TPL = new App();
 
 // URLによる関数の実行
 UTIL.loader( (request, path) => {

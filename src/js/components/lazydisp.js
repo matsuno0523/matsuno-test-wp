@@ -1,4 +1,4 @@
-import ScrollObserver from "./scrollObserver";
+import ScrollObserver from "../core/scrollObserver";
 
 const [d] = [document];
 

@@ -6,7 +6,7 @@ const jqInit = () => false;
 
 export default function HOME () {
   // テンプレートが用意したDOMContentLoaded（テンプレートインスタンスが引数に入る）
-  d.addEventListener('rwd002.beforeDomready', e => domReady(e.detail) );
+  d.addEventListener('app.beforeDomready', e => domReady(e.detail) );
   
   $(() => jqInit());
 }

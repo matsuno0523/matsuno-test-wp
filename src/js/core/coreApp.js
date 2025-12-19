@@ -1,16 +1,12 @@
 import lity from "lity";
 import smoothscroll from "smoothscroll-polyfill";
-import collapseNav from "./collapseNav";
-import drawerNav from "./drawerNav";
-import formConfirm from "./formConfirm";
-import LazyDisp from "./lazydisp";
-import ScrollDir from "./scrollDir";
-import subNav from "./subNav";
-import FirstViewEndObserver from "../extended_class/FirstViewEndObserver";
+import LazyDisp from "../components/lazydisp";
+import ScrollDir from "../components/scrollDir";
+import FirstViewEndObserver from "../components/FirstViewEndObserver";
 
 const [w,d,l,mq] = [window, document, location, window.matchMedia( "(max-width: 1023px)" ) ];
 
-export default class RWD002 {
+export default class CoreApp {
   constructor(opt) {
     // settings
     this.opt = Object.assign({
@@ -18,12 +14,11 @@ export default class RWD002 {
       loadingClass: 'is-loading',
       gnav: '[data-role="globalNav"]',
       fnav: '[data-role="footerNav"]',
-      drawerNav: '[data-plugin="drawerNav"]',
-      collapse: '[data-plugin="collapse"]',
       lazydisp: '[data-lazydisp]',
       csspreload: 'link[rel="preload"][as="style"]',
-      formConfirm: '[data-plugin="formConfirm"]',
       fixNav : false,
+      header: '.l-header',
+      pagetop: '.js-pagetop',
       viewport: {
         mq: w.matchMedia('screen and (min-width:1195px)'),
         content_device: 'width=device-width,initial-scale=1',
@@ -52,24 +47,15 @@ export default class RWD002 {
         }, {once: true});
       }),
     };
-    
-    // サブナビ登録用クラスのインスタンス化
-    this.Subnav = new subNav(this.opt);
 
     // スクロール方向を判定するインスタンス
     this.ScrollDir = new ScrollDir();
-
-    // drawerNavインスタンス
-    this.drawerNav = new drawerNav(this.opt.drawerNav);
-
-    // コメントフォーム確認インスタンス
-    this.formConfirm = new formConfirm(this.opt.formConfirm);
 
   }
 
   init() {
     // イベント発火
-    d.dispatchEvent(new CustomEvent('rwd002.beforeInit', {detail: this}));
+    d.dispatchEvent(new CustomEvent('app.beforeInit', {detail: this}));
 
     // ページローディングエフェクト
     if( this.opt.loading ) this.loading();
@@ -83,25 +69,16 @@ export default class RWD002 {
   
   domReady() {
     // イベント発火
-    d.dispatchEvent(new CustomEvent('rwd002.beforeDomready', {detail: this}));
-
-    // drawerNav開始
-    this.drawerNav.init();
+    d.dispatchEvent(new CustomEvent('app.beforeDomready', {detail: this}));
 
     // LazyDisp開始
     this.LazyDisp = new LazyDisp(this.opt.lazydisp);
-
-    // collapseNav開始
-    this.collapseNav = new collapseNav(this.opt.collapse);
 
     // FixNav
     if( this.opt.fixNav ) this.fixNav( this.opt.fixNav );
     
     // Pagetop
     this.pagetop ();
-
-    // コメントフォーム確認開始
-    this.formConfirm.init();
 
     // pagetopなどhashスクロール
     this.hashscroll();
@@ -115,7 +92,7 @@ export default class RWD002 {
 
   windowLoad() {
     // イベント発火
-    d.dispatchEvent(new CustomEvent('rwd002.beforeWindowload', {detail: this}));
+    d.dispatchEvent(new CustomEvent('app.beforeWindowload', {detail: this}));
 
     // スタイル遅延ロード開始
     this.csspreload();
@@ -153,7 +130,7 @@ export default class RWD002 {
       }else{
         const hash = decodeURI(l.hash);
         const targetElement = d.querySelector(hash);
-        const headerElement = d.querySelector('header.rwd002-header');
+        const headerElement = d.querySelector(this.opt.header);
         // 画面上部から要素までの距離
         const rectTop = (targetElement)? targetElement.getBoundingClientRect().top : 0;
         // スクロール位置に持たせるバッファ
@@ -192,7 +169,7 @@ export default class RWD002 {
     }
     const getAddr = btn => {
       const apiurl = new URL('https://zipcloud.ibsnet.co.jp/api/search');
-      const container = btn.closest('.rwd002-formitem');
+      const container = btn.closest('.js-form-item');
       let zip = container.querySelector('[name="GetAdrsZip"]').value;
       const pref = container.querySelector('[name="GetAdrsPref"]');
       const addr = container.querySelector('[name="GetAdrs"]');
@@ -202,7 +179,7 @@ export default class RWD002 {
         // 住所が正しく取得できた場合
         if( res.results && res.results.length > 0 ) applyAddr(res.results[0], pref, addr);
         // イベント発火
-        d.dispatchEvent(new CustomEvent('rwd002.zip2addr', {detail: {btn, res}}));
+        d.dispatchEvent(new CustomEvent('app.zip2addr', {detail: {btn, res}}));
       });
     }
     btns.forEach( btn => btn.addEventListener('click', () => getAddr(btn) ) );
@@ -215,7 +192,7 @@ export default class RWD002 {
 
   pagetop () { 
     if ( !mq.matches ) {
-      const pagetop = d.querySelector('.rwd002-pagetop__wrap');
+      const pagetop = d.querySelector(this.opt.pagetop);
       new FirstViewEndObserver(pagetop);
     }
   }

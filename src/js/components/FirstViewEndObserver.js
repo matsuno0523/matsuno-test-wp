@@ -1,10 +1,10 @@
-import ScrollObserver from '../class/scrollObserver';
+import ScrollObserver from '../core/scrollObserver';
 
 const [ d ] = [document]
 
 export default class FirstViewEndObserver extends ScrollObserver {
   //newしたときに実行される
-  constructor(elm=d.querySelector('.rwd002-pagetop__wrap'),opt={}) {
+  constructor(elm=d.querySelector('.js-pagetop'),opt={}) {
     opt = Object.assign({  
       rootMargin: "0%",
     }, opt);
