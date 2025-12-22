@@ -16,7 +16,6 @@ export default class CUSTOMIZE extends CoreApp {
     // 上位クラスのコンストラクタ呼び出し
     super(opt);
 
-    this.toggleTags();
     this.customInit();
   }
 
