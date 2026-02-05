@@ -1,0 +1,2953 @@
+/******/ (() => { // webpackBootstrap
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "./node_modules/intersection-observer/intersection-observer.js":
+/*!*********************************************************************!*\
+  !*** ./node_modules/intersection-observer/intersection-observer.js ***!
+  \*********************************************************************/
+/***/ (() => {
+
+/**
+ * Copyright 2016 Google Inc. All Rights Reserved.
+ *
+ * Licensed under the W3C SOFTWARE AND DOCUMENT NOTICE AND LICENSE.
+ *
+ *  https://www.w3.org/Consortium/Legal/2015/copyright-software-and-document
+ *
+ */
+(function() {
+'use strict';
+
+// Exit early if we're not running in a browser.
+if (typeof window !== 'object') {
+  return;
+}
+
+// Exit early if all IntersectionObserver and IntersectionObserverEntry
+// features are natively supported.
+if ('IntersectionObserver' in window &&
+    'IntersectionObserverEntry' in window &&
+    'intersectionRatio' in window.IntersectionObserverEntry.prototype) {
+
+  // Minimal polyfill for Edge 15's lack of `isIntersecting`
+  // See: https://github.com/w3c/IntersectionObserver/issues/211
+  if (!('isIntersecting' in window.IntersectionObserverEntry.prototype)) {
+    Object.defineProperty(window.IntersectionObserverEntry.prototype,
+      'isIntersecting', {
+      get: function () {
+        return this.intersectionRatio > 0;
+      }
+    });
+  }
+  return;
+}
+
+/**
+ * Returns the embedding frame element, if any.
+ * @param {!Document} doc
+ * @return {!Element}
+ */
+function getFrameElement(doc) {
+  try {
+    return doc.defaultView && doc.defaultView.frameElement || null;
+  } catch (e) {
+    // Ignore the error.
+    return null;
+  }
+}
+
+/**
+ * A local reference to the root document.
+ */
+var document = (function(startDoc) {
+  var doc = startDoc;
+  var frame = getFrameElement(doc);
+  while (frame) {
+    doc = frame.ownerDocument;
+    frame = getFrameElement(doc);
+  }
+  return doc;
+})(window.document);
+
+/**
+ * An IntersectionObserver registry. This registry exists to hold a strong
+ * reference to IntersectionObserver instances currently observing a target
+ * element. Without this registry, instances without another reference may be
+ * garbage collected.
+ */
+var registry = [];
+
+/**
+ * The signal updater for cross-origin intersection. When not null, it means
+ * that the polyfill is configured to work in a cross-origin mode.
+ * @type {function(DOMRect|ClientRect, DOMRect|ClientRect)}
+ */
+var crossOriginUpdater = null;
+
+/**
+ * The current cross-origin intersection. Only used in the cross-origin mode.
+ * @type {DOMRect|ClientRect}
+ */
+var crossOriginRect = null;
+
+
+/**
+ * Creates the global IntersectionObserverEntry constructor.
+ * https://w3c.github.io/IntersectionObserver/#intersection-observer-entry
+ * @param {Object} entry A dictionary of instance properties.
+ * @constructor
+ */
+function IntersectionObserverEntry(entry) {
+  this.time = entry.time;
+  this.target = entry.target;
+  this.rootBounds = ensureDOMRect(entry.rootBounds);
+  this.boundingClientRect = ensureDOMRect(entry.boundingClientRect);
+  this.intersectionRect = ensureDOMRect(entry.intersectionRect || getEmptyRect());
+  this.isIntersecting = !!entry.intersectionRect;
+
+  // Calculates the intersection ratio.
+  var targetRect = this.boundingClientRect;
+  var targetArea = targetRect.width * targetRect.height;
+  var intersectionRect = this.intersectionRect;
+  var intersectionArea = intersectionRect.width * intersectionRect.height;
+
+  // Sets intersection ratio.
+  if (targetArea) {
+    // Round the intersection ratio to avoid floating point math issues:
+    // https://github.com/w3c/IntersectionObserver/issues/324
+    this.intersectionRatio = Number((intersectionArea / targetArea).toFixed(4));
+  } else {
+    // If area is zero and is intersecting, sets to 1, otherwise to 0
+    this.intersectionRatio = this.isIntersecting ? 1 : 0;
+  }
+}
+
+
+/**
+ * Creates the global IntersectionObserver constructor.
+ * https://w3c.github.io/IntersectionObserver/#intersection-observer-interface
+ * @param {Function} callback The function to be invoked after intersection
+ *     changes have queued. The function is not invoked if the queue has
+ *     been emptied by calling the `takeRecords` method.
+ * @param {Object=} opt_options Optional configuration options.
+ * @constructor
+ */
+function IntersectionObserver(callback, opt_options) {
+
+  var options = opt_options || {};
+
+  if (typeof callback != 'function') {
+    throw new Error('callback must be a function');
+  }
+
+  if (
+    options.root &&
+    options.root.nodeType != 1 &&
+    options.root.nodeType != 9
+  ) {
+    throw new Error('root must be a Document or Element');
+  }
+
+  // Binds and throttles `this._checkForIntersections`.
+  this._checkForIntersections = throttle(
+      this._checkForIntersections.bind(this), this.THROTTLE_TIMEOUT);
+
+  // Private properties.
+  this._callback = callback;
+  this._observationTargets = [];
+  this._queuedEntries = [];
+  this._rootMarginValues = this._parseRootMargin(options.rootMargin);
+
+  // Public properties.
+  this.thresholds = this._initThresholds(options.threshold);
+  this.root = options.root || null;
+  this.rootMargin = this._rootMarginValues.map(function(margin) {
+    return margin.value + margin.unit;
+  }).join(' ');
+
+  /** @private @const {!Array<!Document>} */
+  this._monitoringDocuments = [];
+  /** @private @const {!Array<function()>} */
+  this._monitoringUnsubscribes = [];
+}
+
+
+/**
+ * The minimum interval within which the document will be checked for
+ * intersection changes.
+ */
+IntersectionObserver.prototype.THROTTLE_TIMEOUT = 100;
+
+
+/**
+ * The frequency in which the polyfill polls for intersection changes.
+ * this can be updated on a per instance basis and must be set prior to
+ * calling `observe` on the first target.
+ */
+IntersectionObserver.prototype.POLL_INTERVAL = null;
+
+/**
+ * Use a mutation observer on the root element
+ * to detect intersection changes.
+ */
+IntersectionObserver.prototype.USE_MUTATION_OBSERVER = true;
+
+
+/**
+ * Sets up the polyfill in the cross-origin mode. The result is the
+ * updater function that accepts two arguments: `boundingClientRect` and
+ * `intersectionRect` - just as these fields would be available to the
+ * parent via `IntersectionObserverEntry`. This function should be called
+ * each time the iframe receives intersection information from the parent
+ * window, e.g. via messaging.
+ * @return {function(DOMRect|ClientRect, DOMRect|ClientRect)}
+ */
+IntersectionObserver._setupCrossOriginUpdater = function() {
+  if (!crossOriginUpdater) {
+    /**
+     * @param {DOMRect|ClientRect} boundingClientRect
+     * @param {DOMRect|ClientRect} intersectionRect
+     */
+    crossOriginUpdater = function(boundingClientRect, intersectionRect) {
+      if (!boundingClientRect || !intersectionRect) {
+        crossOriginRect = getEmptyRect();
+      } else {
+        crossOriginRect = convertFromParentRect(boundingClientRect, intersectionRect);
+      }
+      registry.forEach(function(observer) {
+        observer._checkForIntersections();
+      });
+    };
+  }
+  return crossOriginUpdater;
+};
+
+
+/**
+ * Resets the cross-origin mode.
+ */
+IntersectionObserver._resetCrossOriginUpdater = function() {
+  crossOriginUpdater = null;
+  crossOriginRect = null;
+};
+
+
+/**
+ * Starts observing a target element for intersection changes based on
+ * the thresholds values.
+ * @param {Element} target The DOM element to observe.
+ */
+IntersectionObserver.prototype.observe = function(target) {
+  var isTargetAlreadyObserved = this._observationTargets.some(function(item) {
+    return item.element == target;
+  });
+
+  if (isTargetAlreadyObserved) {
+    return;
+  }
+
+  if (!(target && target.nodeType == 1)) {
+    throw new Error('target must be an Element');
+  }
+
+  this._registerInstance();
+  this._observationTargets.push({element: target, entry: null});
+  this._monitorIntersections(target.ownerDocument);
+  this._checkForIntersections();
+};
+
+
+/**
+ * Stops observing a target element for intersection changes.
+ * @param {Element} target The DOM element to observe.
+ */
+IntersectionObserver.prototype.unobserve = function(target) {
+  this._observationTargets =
+      this._observationTargets.filter(function(item) {
+        return item.element != target;
+      });
+  this._unmonitorIntersections(target.ownerDocument);
+  if (this._observationTargets.length == 0) {
+    this._unregisterInstance();
+  }
+};
+
+
+/**
+ * Stops observing all target elements for intersection changes.
+ */
+IntersectionObserver.prototype.disconnect = function() {
+  this._observationTargets = [];
+  this._unmonitorAllIntersections();
+  this._unregisterInstance();
+};
+
+
+/**
+ * Returns any queue entries that have not yet been reported to the
+ * callback and clears the queue. This can be used in conjunction with the
+ * callback to obtain the absolute most up-to-date intersection information.
+ * @return {Array} The currently queued entries.
+ */
+IntersectionObserver.prototype.takeRecords = function() {
+  var records = this._queuedEntries.slice();
+  this._queuedEntries = [];
+  return records;
+};
+
+
+/**
+ * Accepts the threshold value from the user configuration object and
+ * returns a sorted array of unique threshold values. If a value is not
+ * between 0 and 1 and error is thrown.
+ * @private
+ * @param {Array|number=} opt_threshold An optional threshold value or
+ *     a list of threshold values, defaulting to [0].
+ * @return {Array} A sorted list of unique and valid threshold values.
+ */
+IntersectionObserver.prototype._initThresholds = function(opt_threshold) {
+  var threshold = opt_threshold || [0];
+  if (!Array.isArray(threshold)) threshold = [threshold];
+
+  return threshold.sort().filter(function(t, i, a) {
+    if (typeof t != 'number' || isNaN(t) || t < 0 || t > 1) {
+      throw new Error('threshold must be a number between 0 and 1 inclusively');
+    }
+    return t !== a[i - 1];
+  });
+};
+
+
+/**
+ * Accepts the rootMargin value from the user configuration object
+ * and returns an array of the four margin values as an object containing
+ * the value and unit properties. If any of the values are not properly
+ * formatted or use a unit other than px or %, and error is thrown.
+ * @private
+ * @param {string=} opt_rootMargin An optional rootMargin value,
+ *     defaulting to '0px'.
+ * @return {Array<Object>} An array of margin objects with the keys
+ *     value and unit.
+ */
+IntersectionObserver.prototype._parseRootMargin = function(opt_rootMargin) {
+  var marginString = opt_rootMargin || '0px';
+  var margins = marginString.split(/\s+/).map(function(margin) {
+    var parts = /^(-?\d*\.?\d+)(px|%)$/.exec(margin);
+    if (!parts) {
+      throw new Error('rootMargin must be specified in pixels or percent');
+    }
+    return {value: parseFloat(parts[1]), unit: parts[2]};
+  });
+
+  // Handles shorthand.
+  margins[1] = margins[1] || margins[0];
+  margins[2] = margins[2] || margins[0];
+  margins[3] = margins[3] || margins[1];
+
+  return margins;
+};
+
+
+/**
+ * Starts polling for intersection changes if the polling is not already
+ * happening, and if the page's visibility state is visible.
+ * @param {!Document} doc
+ * @private
+ */
+IntersectionObserver.prototype._monitorIntersections = function(doc) {
+  var win = doc.defaultView;
+  if (!win) {
+    // Already destroyed.
+    return;
+  }
+  if (this._monitoringDocuments.indexOf(doc) != -1) {
+    // Already monitoring.
+    return;
+  }
+
+  // Private state for monitoring.
+  var callback = this._checkForIntersections;
+  var monitoringInterval = null;
+  var domObserver = null;
+
+  // If a poll interval is set, use polling instead of listening to
+  // resize and scroll events or DOM mutations.
+  if (this.POLL_INTERVAL) {
+    monitoringInterval = win.setInterval(callback, this.POLL_INTERVAL);
+  } else {
+    addEvent(win, 'resize', callback, true);
+    addEvent(doc, 'scroll', callback, true);
+    if (this.USE_MUTATION_OBSERVER && 'MutationObserver' in win) {
+      domObserver = new win.MutationObserver(callback);
+      domObserver.observe(doc, {
+        attributes: true,
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    }
+  }
+
+  this._monitoringDocuments.push(doc);
+  this._monitoringUnsubscribes.push(function() {
+    // Get the window object again. When a friendly iframe is destroyed, it
+    // will be null.
+    var win = doc.defaultView;
+
+    if (win) {
+      if (monitoringInterval) {
+        win.clearInterval(monitoringInterval);
+      }
+      removeEvent(win, 'resize', callback, true);
+    }
+
+    removeEvent(doc, 'scroll', callback, true);
+    if (domObserver) {
+      domObserver.disconnect();
+    }
+  });
+
+  // Also monitor the parent.
+  var rootDoc =
+    (this.root && (this.root.ownerDocument || this.root)) || document;
+  if (doc != rootDoc) {
+    var frame = getFrameElement(doc);
+    if (frame) {
+      this._monitorIntersections(frame.ownerDocument);
+    }
+  }
+};
+
+
+/**
+ * Stops polling for intersection changes.
+ * @param {!Document} doc
+ * @private
+ */
+IntersectionObserver.prototype._unmonitorIntersections = function(doc) {
+  var index = this._monitoringDocuments.indexOf(doc);
+  if (index == -1) {
+    return;
+  }
+
+  var rootDoc =
+    (this.root && (this.root.ownerDocument || this.root)) || document;
+
+  // Check if any dependent targets are still remaining.
+  var hasDependentTargets =
+      this._observationTargets.some(function(item) {
+        var itemDoc = item.element.ownerDocument;
+        // Target is in this context.
+        if (itemDoc == doc) {
+          return true;
+        }
+        // Target is nested in this context.
+        while (itemDoc && itemDoc != rootDoc) {
+          var frame = getFrameElement(itemDoc);
+          itemDoc = frame && frame.ownerDocument;
+          if (itemDoc == doc) {
+            return true;
+          }
+        }
+        return false;
+      });
+  if (hasDependentTargets) {
+    return;
+  }
+
+  // Unsubscribe.
+  var unsubscribe = this._monitoringUnsubscribes[index];
+  this._monitoringDocuments.splice(index, 1);
+  this._monitoringUnsubscribes.splice(index, 1);
+  unsubscribe();
+
+  // Also unmonitor the parent.
+  if (doc != rootDoc) {
+    var frame = getFrameElement(doc);
+    if (frame) {
+      this._unmonitorIntersections(frame.ownerDocument);
+    }
+  }
+};
+
+
+/**
+ * Stops polling for intersection changes.
+ * @param {!Document} doc
+ * @private
+ */
+IntersectionObserver.prototype._unmonitorAllIntersections = function() {
+  var unsubscribes = this._monitoringUnsubscribes.slice(0);
+  this._monitoringDocuments.length = 0;
+  this._monitoringUnsubscribes.length = 0;
+  for (var i = 0; i < unsubscribes.length; i++) {
+    unsubscribes[i]();
+  }
+};
+
+
+/**
+ * Scans each observation target for intersection changes and adds them
+ * to the internal entries queue. If new entries are found, it
+ * schedules the callback to be invoked.
+ * @private
+ */
+IntersectionObserver.prototype._checkForIntersections = function() {
+  if (!this.root && crossOriginUpdater && !crossOriginRect) {
+    // Cross origin monitoring, but no initial data available yet.
+    return;
+  }
+
+  var rootIsInDom = this._rootIsInDom();
+  var rootRect = rootIsInDom ? this._getRootRect() : getEmptyRect();
+
+  this._observationTargets.forEach(function(item) {
+    var target = item.element;
+    var targetRect = getBoundingClientRect(target);
+    var rootContainsTarget = this._rootContainsTarget(target);
+    var oldEntry = item.entry;
+    var intersectionRect = rootIsInDom && rootContainsTarget &&
+        this._computeTargetAndRootIntersection(target, targetRect, rootRect);
+
+    var rootBounds = null;
+    if (!this._rootContainsTarget(target)) {
+      rootBounds = getEmptyRect();
+    } else if (!crossOriginUpdater || this.root) {
+      rootBounds = rootRect;
+    }
+
+    var newEntry = item.entry = new IntersectionObserverEntry({
+      time: now(),
+      target: target,
+      boundingClientRect: targetRect,
+      rootBounds: rootBounds,
+      intersectionRect: intersectionRect
+    });
+
+    if (!oldEntry) {
+      this._queuedEntries.push(newEntry);
+    } else if (rootIsInDom && rootContainsTarget) {
+      // If the new entry intersection ratio has crossed any of the
+      // thresholds, add a new entry.
+      if (this._hasCrossedThreshold(oldEntry, newEntry)) {
+        this._queuedEntries.push(newEntry);
+      }
+    } else {
+      // If the root is not in the DOM or target is not contained within
+      // root but the previous entry for this target had an intersection,
+      // add a new record indicating removal.
+      if (oldEntry && oldEntry.isIntersecting) {
+        this._queuedEntries.push(newEntry);
+      }
+    }
+  }, this);
+
+  if (this._queuedEntries.length) {
+    this._callback(this.takeRecords(), this);
+  }
+};
+
+
+/**
+ * Accepts a target and root rect computes the intersection between then
+ * following the algorithm in the spec.
+ * TODO(philipwalton): at this time clip-path is not considered.
+ * https://w3c.github.io/IntersectionObserver/#calculate-intersection-rect-algo
+ * @param {Element} target The target DOM element
+ * @param {Object} targetRect The bounding rect of the target.
+ * @param {Object} rootRect The bounding rect of the root after being
+ *     expanded by the rootMargin value.
+ * @return {?Object} The final intersection rect object or undefined if no
+ *     intersection is found.
+ * @private
+ */
+IntersectionObserver.prototype._computeTargetAndRootIntersection =
+    function(target, targetRect, rootRect) {
+  // If the element isn't displayed, an intersection can't happen.
+  if (window.getComputedStyle(target).display == 'none') return;
+
+  var intersectionRect = targetRect;
+  var parent = getParentNode(target);
+  var atRoot = false;
+
+  while (!atRoot && parent) {
+    var parentRect = null;
+    var parentComputedStyle = parent.nodeType == 1 ?
+        window.getComputedStyle(parent) : {};
+
+    // If the parent isn't displayed, an intersection can't happen.
+    if (parentComputedStyle.display == 'none') return null;
+
+    if (parent == this.root || parent.nodeType == /* DOCUMENT */ 9) {
+      atRoot = true;
+      if (parent == this.root || parent == document) {
+        if (crossOriginUpdater && !this.root) {
+          if (!crossOriginRect ||
+              crossOriginRect.width == 0 && crossOriginRect.height == 0) {
+            // A 0-size cross-origin intersection means no-intersection.
+            parent = null;
+            parentRect = null;
+            intersectionRect = null;
+          } else {
+            parentRect = crossOriginRect;
+          }
+        } else {
+          parentRect = rootRect;
+        }
+      } else {
+        // Check if there's a frame that can be navigated to.
+        var frame = getParentNode(parent);
+        var frameRect = frame && getBoundingClientRect(frame);
+        var frameIntersect =
+            frame &&
+            this._computeTargetAndRootIntersection(frame, frameRect, rootRect);
+        if (frameRect && frameIntersect) {
+          parent = frame;
+          parentRect = convertFromParentRect(frameRect, frameIntersect);
+        } else {
+          parent = null;
+          intersectionRect = null;
+        }
+      }
+    } else {
+      // If the element has a non-visible overflow, and it's not the <body>
+      // or <html> element, update the intersection rect.
+      // Note: <body> and <html> cannot be clipped to a rect that's not also
+      // the document rect, so no need to compute a new intersection.
+      var doc = parent.ownerDocument;
+      if (parent != doc.body &&
+          parent != doc.documentElement &&
+          parentComputedStyle.overflow != 'visible') {
+        parentRect = getBoundingClientRect(parent);
+      }
+    }
+
+    // If either of the above conditionals set a new parentRect,
+    // calculate new intersection data.
+    if (parentRect) {
+      intersectionRect = computeRectIntersection(parentRect, intersectionRect);
+    }
+    if (!intersectionRect) break;
+    parent = parent && getParentNode(parent);
+  }
+  return intersectionRect;
+};
+
+
+/**
+ * Returns the root rect after being expanded by the rootMargin value.
+ * @return {ClientRect} The expanded root rect.
+ * @private
+ */
+IntersectionObserver.prototype._getRootRect = function() {
+  var rootRect;
+  if (this.root && !isDoc(this.root)) {
+    rootRect = getBoundingClientRect(this.root);
+  } else {
+    // Use <html>/<body> instead of window since scroll bars affect size.
+    var doc = isDoc(this.root) ? this.root : document;
+    var html = doc.documentElement;
+    var body = doc.body;
+    rootRect = {
+      top: 0,
+      left: 0,
+      right: html.clientWidth || body.clientWidth,
+      width: html.clientWidth || body.clientWidth,
+      bottom: html.clientHeight || body.clientHeight,
+      height: html.clientHeight || body.clientHeight
+    };
+  }
+  return this._expandRectByRootMargin(rootRect);
+};
+
+
+/**
+ * Accepts a rect and expands it by the rootMargin value.
+ * @param {DOMRect|ClientRect} rect The rect object to expand.
+ * @return {ClientRect} The expanded rect.
+ * @private
+ */
+IntersectionObserver.prototype._expandRectByRootMargin = function(rect) {
+  var margins = this._rootMarginValues.map(function(margin, i) {
+    return margin.unit == 'px' ? margin.value :
+        margin.value * (i % 2 ? rect.width : rect.height) / 100;
+  });
+  var newRect = {
+    top: rect.top - margins[0],
+    right: rect.right + margins[1],
+    bottom: rect.bottom + margins[2],
+    left: rect.left - margins[3]
+  };
+  newRect.width = newRect.right - newRect.left;
+  newRect.height = newRect.bottom - newRect.top;
+
+  return newRect;
+};
+
+
+/**
+ * Accepts an old and new entry and returns true if at least one of the
+ * threshold values has been crossed.
+ * @param {?IntersectionObserverEntry} oldEntry The previous entry for a
+ *    particular target element or null if no previous entry exists.
+ * @param {IntersectionObserverEntry} newEntry The current entry for a
+ *    particular target element.
+ * @return {boolean} Returns true if a any threshold has been crossed.
+ * @private
+ */
+IntersectionObserver.prototype._hasCrossedThreshold =
+    function(oldEntry, newEntry) {
+
+  // To make comparing easier, an entry that has a ratio of 0
+  // but does not actually intersect is given a value of -1
+  var oldRatio = oldEntry && oldEntry.isIntersecting ?
+      oldEntry.intersectionRatio || 0 : -1;
+  var newRatio = newEntry.isIntersecting ?
+      newEntry.intersectionRatio || 0 : -1;
+
+  // Ignore unchanged ratios
+  if (oldRatio === newRatio) return;
+
+  for (var i = 0; i < this.thresholds.length; i++) {
+    var threshold = this.thresholds[i];
+
+    // Return true if an entry matches a threshold or if the new ratio
+    // and the old ratio are on the opposite sides of a threshold.
+    if (threshold == oldRatio || threshold == newRatio ||
+        threshold < oldRatio !== threshold < newRatio) {
+      return true;
+    }
+  }
+};
+
+
+/**
+ * Returns whether or not the root element is an element and is in the DOM.
+ * @return {boolean} True if the root element is an element and is in the DOM.
+ * @private
+ */
+IntersectionObserver.prototype._rootIsInDom = function() {
+  return !this.root || containsDeep(document, this.root);
+};
+
+
+/**
+ * Returns whether or not the target element is a child of root.
+ * @param {Element} target The target element to check.
+ * @return {boolean} True if the target element is a child of root.
+ * @private
+ */
+IntersectionObserver.prototype._rootContainsTarget = function(target) {
+  var rootDoc =
+    (this.root && (this.root.ownerDocument || this.root)) || document;
+  return (
+    containsDeep(rootDoc, target) &&
+    (!this.root || rootDoc == target.ownerDocument)
+  );
+};
+
+
+/**
+ * Adds the instance to the global IntersectionObserver registry if it isn't
+ * already present.
+ * @private
+ */
+IntersectionObserver.prototype._registerInstance = function() {
+  if (registry.indexOf(this) < 0) {
+    registry.push(this);
+  }
+};
+
+
+/**
+ * Removes the instance from the global IntersectionObserver registry.
+ * @private
+ */
+IntersectionObserver.prototype._unregisterInstance = function() {
+  var index = registry.indexOf(this);
+  if (index != -1) registry.splice(index, 1);
+};
+
+
+/**
+ * Returns the result of the performance.now() method or null in browsers
+ * that don't support the API.
+ * @return {number} The elapsed time since the page was requested.
+ */
+function now() {
+  return window.performance && performance.now && performance.now();
+}
+
+
+/**
+ * Throttles a function and delays its execution, so it's only called at most
+ * once within a given time period.
+ * @param {Function} fn The function to throttle.
+ * @param {number} timeout The amount of time that must pass before the
+ *     function can be called again.
+ * @return {Function} The throttled function.
+ */
+function throttle(fn, timeout) {
+  var timer = null;
+  return function () {
+    if (!timer) {
+      timer = setTimeout(function() {
+        fn();
+        timer = null;
+      }, timeout);
+    }
+  };
+}
+
+
+/**
+ * Adds an event handler to a DOM node ensuring cross-browser compatibility.
+ * @param {Node} node The DOM node to add the event handler to.
+ * @param {string} event The event name.
+ * @param {Function} fn The event handler to add.
+ * @param {boolean} opt_useCapture Optionally adds the even to the capture
+ *     phase. Note: this only works in modern browsers.
+ */
+function addEvent(node, event, fn, opt_useCapture) {
+  if (typeof node.addEventListener == 'function') {
+    node.addEventListener(event, fn, opt_useCapture || false);
+  }
+  else if (typeof node.attachEvent == 'function') {
+    node.attachEvent('on' + event, fn);
+  }
+}
+
+
+/**
+ * Removes a previously added event handler from a DOM node.
+ * @param {Node} node The DOM node to remove the event handler from.
+ * @param {string} event The event name.
+ * @param {Function} fn The event handler to remove.
+ * @param {boolean} opt_useCapture If the event handler was added with this
+ *     flag set to true, it should be set to true here in order to remove it.
+ */
+function removeEvent(node, event, fn, opt_useCapture) {
+  if (typeof node.removeEventListener == 'function') {
+    node.removeEventListener(event, fn, opt_useCapture || false);
+  }
+  else if (typeof node.detachEvent == 'function') {
+    node.detachEvent('on' + event, fn);
+  }
+}
+
+
+/**
+ * Returns the intersection between two rect objects.
+ * @param {Object} rect1 The first rect.
+ * @param {Object} rect2 The second rect.
+ * @return {?Object|?ClientRect} The intersection rect or undefined if no
+ *     intersection is found.
+ */
+function computeRectIntersection(rect1, rect2) {
+  var top = Math.max(rect1.top, rect2.top);
+  var bottom = Math.min(rect1.bottom, rect2.bottom);
+  var left = Math.max(rect1.left, rect2.left);
+  var right = Math.min(rect1.right, rect2.right);
+  var width = right - left;
+  var height = bottom - top;
+
+  return (width >= 0 && height >= 0) && {
+    top: top,
+    bottom: bottom,
+    left: left,
+    right: right,
+    width: width,
+    height: height
+  } || null;
+}
+
+
+/**
+ * Shims the native getBoundingClientRect for compatibility with older IE.
+ * @param {Element} el The element whose bounding rect to get.
+ * @return {DOMRect|ClientRect} The (possibly shimmed) rect of the element.
+ */
+function getBoundingClientRect(el) {
+  var rect;
+
+  try {
+    rect = el.getBoundingClientRect();
+  } catch (err) {
+    // Ignore Windows 7 IE11 "Unspecified error"
+    // https://github.com/w3c/IntersectionObserver/pull/205
+  }
+
+  if (!rect) return getEmptyRect();
+
+  // Older IE
+  if (!(rect.width && rect.height)) {
+    rect = {
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      left: rect.left,
+      width: rect.right - rect.left,
+      height: rect.bottom - rect.top
+    };
+  }
+  return rect;
+}
+
+
+/**
+ * Returns an empty rect object. An empty rect is returned when an element
+ * is not in the DOM.
+ * @return {ClientRect} The empty rect.
+ */
+function getEmptyRect() {
+  return {
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    width: 0,
+    height: 0
+  };
+}
+
+
+/**
+ * Ensure that the result has all of the necessary fields of the DOMRect.
+ * Specifically this ensures that `x` and `y` fields are set.
+ *
+ * @param {?DOMRect|?ClientRect} rect
+ * @return {?DOMRect}
+ */
+function ensureDOMRect(rect) {
+  // A `DOMRect` object has `x` and `y` fields.
+  if (!rect || 'x' in rect) {
+    return rect;
+  }
+  // A IE's `ClientRect` type does not have `x` and `y`. The same is the case
+  // for internally calculated Rect objects. For the purposes of
+  // `IntersectionObserver`, it's sufficient to simply mirror `left` and `top`
+  // for these fields.
+  return {
+    top: rect.top,
+    y: rect.top,
+    bottom: rect.bottom,
+    left: rect.left,
+    x: rect.left,
+    right: rect.right,
+    width: rect.width,
+    height: rect.height
+  };
+}
+
+
+/**
+ * Inverts the intersection and bounding rect from the parent (frame) BCR to
+ * the local BCR space.
+ * @param {DOMRect|ClientRect} parentBoundingRect The parent's bound client rect.
+ * @param {DOMRect|ClientRect} parentIntersectionRect The parent's own intersection rect.
+ * @return {ClientRect} The local root bounding rect for the parent's children.
+ */
+function convertFromParentRect(parentBoundingRect, parentIntersectionRect) {
+  var top = parentIntersectionRect.top - parentBoundingRect.top;
+  var left = parentIntersectionRect.left - parentBoundingRect.left;
+  return {
+    top: top,
+    left: left,
+    height: parentIntersectionRect.height,
+    width: parentIntersectionRect.width,
+    bottom: top + parentIntersectionRect.height,
+    right: left + parentIntersectionRect.width
+  };
+}
+
+
+/**
+ * Checks to see if a parent element contains a child element (including inside
+ * shadow DOM).
+ * @param {Node} parent The parent element.
+ * @param {Node} child The child element.
+ * @return {boolean} True if the parent node contains the child node.
+ */
+function containsDeep(parent, child) {
+  var node = child;
+  while (node) {
+    if (node == parent) return true;
+
+    node = getParentNode(node);
+  }
+  return false;
+}
+
+
+/**
+ * Gets the parent node of an element or its host element if the parent node
+ * is a shadow root.
+ * @param {Node} node The node whose parent to get.
+ * @return {Node|null} The parent node or null if no parent exists.
+ */
+function getParentNode(node) {
+  var parent = node.parentNode;
+
+  if (node.nodeType == /* DOCUMENT */ 9 && node != document) {
+    // If this node is a document node, look for the embedding frame.
+    return getFrameElement(node);
+  }
+
+  // If the parent has element that is assigned through shadow root slot
+  if (parent && parent.assignedSlot) {
+    parent = parent.assignedSlot.parentNode
+  }
+
+  if (parent && parent.nodeType == 11 && parent.host) {
+    // If the parent is a shadow root, return the host element.
+    return parent.host;
+  }
+
+  return parent;
+}
+
+/**
+ * Returns true if `node` is a Document.
+ * @param {!Node} node
+ * @returns {boolean}
+ */
+function isDoc(node) {
+  return node && node.nodeType === 9;
+}
+
+
+// Exposes the constructors globally.
+window.IntersectionObserver = IntersectionObserver;
+window.IntersectionObserverEntry = IntersectionObserverEntry;
+
+}());
+
+
+/***/ }),
+
+/***/ "./node_modules/lity/dist/lity.js":
+/*!****************************************!*\
+  !*** ./node_modules/lity/dist/lity.js ***!
+  \****************************************/
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*! Lity - v2.4.1 - 2020-04-26
+* http://sorgalla.com/lity/
+* Copyright (c) 2015-2020 Jan Sorgalla; Licensed MIT */
+(function(window, factory) {
+    if (true) {
+        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(/*! jquery */ "jquery")], __WEBPACK_AMD_DEFINE_RESULT__ = (function($) {
+            return factory(window, $);
+        }).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
+		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+    } else // removed by dead control flow
+{}
+}(typeof window !== "undefined" ? window : this, function(window, $) {
+    'use strict';
+
+    var document = window.document;
+
+    var _win = $(window);
+    var _deferred = $.Deferred;
+    var _html = $('html');
+    var _instances = [];
+
+    var _attrAriaHidden = 'aria-hidden';
+    var _dataAriaHidden = 'lity-' + _attrAriaHidden;
+
+    var _focusableElementsSelector = 'a[href],area[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),button:not([disabled]),iframe,object,embed,[contenteditable],[tabindex]:not([tabindex^="-"])';
+
+    var _defaultOptions = {
+        esc: true,
+        handler: null,
+        handlers: {
+            image: imageHandler,
+            inline: inlineHandler,
+            youtube: youtubeHandler,
+            vimeo: vimeoHandler,
+            googlemaps: googlemapsHandler,
+            facebookvideo: facebookvideoHandler,
+            iframe: iframeHandler
+        },
+        template: '<div class="lity" role="dialog" aria-label="Dialog Window (Press escape to close)" tabindex="-1"><div class="lity-wrap" data-lity-close role="document"><div class="lity-loader" aria-hidden="true">Loading...</div><div class="lity-container"><div class="lity-content"></div><button class="lity-close" type="button" aria-label="Close (Press escape to close)" data-lity-close>&times;</button></div></div></div>'
+    };
+
+    var _imageRegexp = /(^data:image\/)|(\.(png|jpe?g|gif|svg|webp|bmp|ico|tiff?)(\?\S*)?$)/i;
+    var _youtubeRegex = /(youtube(-nocookie)?\.com|youtu\.be)\/(watch\?v=|v\/|u\/|embed\/?)?([\w-]{11})(.*)?/i;
+    var _vimeoRegex =  /(vimeo(pro)?.com)\/(?:[^\d]+)?(\d+)\??(.*)?$/;
+    var _googlemapsRegex = /((maps|www)\.)?google\.([^\/\?]+)\/?((maps\/?)?\?)(.*)/i;
+    var _facebookvideoRegex = /(facebook\.com)\/([a-z0-9_-]*)\/videos\/([0-9]*)(.*)?$/i;
+
+    var _transitionEndEvent = (function() {
+        var el = document.createElement('div');
+
+        var transEndEventNames = {
+            WebkitTransition: 'webkitTransitionEnd',
+            MozTransition: 'transitionend',
+            OTransition: 'oTransitionEnd otransitionend',
+            transition: 'transitionend'
+        };
+
+        for (var name in transEndEventNames) {
+            if (el.style[name] !== undefined) {
+                return transEndEventNames[name];
+            }
+        }
+
+        return false;
+    })();
+
+    function transitionEnd(element) {
+        var deferred = _deferred();
+
+        if (!_transitionEndEvent || !element.length) {
+            deferred.resolve();
+        } else {
+            element.one(_transitionEndEvent, deferred.resolve);
+            setTimeout(deferred.resolve, 500);
+        }
+
+        return deferred.promise();
+    }
+
+    function settings(currSettings, key, value) {
+        if (arguments.length === 1) {
+            return $.extend({}, currSettings);
+        }
+
+        if (typeof key === 'string') {
+            if (typeof value === 'undefined') {
+                return typeof currSettings[key] === 'undefined'
+                    ? null
+                    : currSettings[key];
+            }
+
+            currSettings[key] = value;
+        } else {
+            $.extend(currSettings, key);
+        }
+
+        return this;
+    }
+
+    function parseQueryParams(params) {
+        var pairs = decodeURI(params.split('#')[0]).split('&');
+        var obj = {}, p;
+
+        for (var i = 0, n = pairs.length; i < n; i++) {
+            if (!pairs[i]) {
+                continue;
+            }
+
+            p = pairs[i].split('=');
+            obj[p[0]] = p[1];
+        }
+
+        return obj;
+    }
+
+    function appendQueryParams(url, params) {
+        return url + (url.indexOf('?') > -1 ? '&' : '?') + $.param(params);
+    }
+
+    function transferHash(originalUrl, newUrl) {
+        var pos = originalUrl.indexOf('#');
+
+        if (-1 === pos) {
+            return newUrl;
+        }
+
+        if (pos > 0) {
+            originalUrl = originalUrl.substr(pos);
+        }
+
+        return newUrl + originalUrl;
+    }
+
+    function error(msg) {
+        return $('<span class="lity-error"></span>').append(msg);
+    }
+
+    function imageHandler(target, instance) {
+        var desc = (instance.opener() && instance.opener().data('lity-desc')) || 'Image with no description';
+        var img = $('<img src="' + target + '" alt="' + desc + '"/>');
+        var deferred = _deferred();
+        var failed = function() {
+            deferred.reject(error('Failed loading image'));
+        };
+
+        img
+            .on('load', function() {
+                if (this.naturalWidth === 0) {
+                    return failed();
+                }
+
+                deferred.resolve(img);
+            })
+            .on('error', failed)
+        ;
+
+        return deferred.promise();
+    }
+
+    imageHandler.test = function(target) {
+        return _imageRegexp.test(target);
+    };
+
+    function inlineHandler(target, instance) {
+        var el, placeholder, hasHideClass;
+
+        try {
+            el = $(target);
+        } catch (e) {
+            return false;
+        }
+
+        if (!el.length) {
+            return false;
+        }
+
+        placeholder = $('<i style="display:none !important"></i>');
+        hasHideClass = el.hasClass('lity-hide');
+
+        instance
+            .element()
+            .one('lity:remove', function() {
+                placeholder
+                    .before(el)
+                    .remove()
+                ;
+
+                if (hasHideClass && !el.closest('.lity-content').length) {
+                    el.addClass('lity-hide');
+                }
+            })
+        ;
+
+        return el
+            .removeClass('lity-hide')
+            .after(placeholder)
+        ;
+    }
+
+    function youtubeHandler(target) {
+        var matches = _youtubeRegex.exec(target);
+
+        if (!matches) {
+            return false;
+        }
+
+        return iframeHandler(
+            transferHash(
+                target,
+                appendQueryParams(
+                    'https://www.youtube' + (matches[2] || '') + '.com/embed/' + matches[4],
+                    $.extend(
+                        {
+                            autoplay: 1
+                        },
+                        parseQueryParams(matches[5] || '')
+                    )
+                )
+            )
+        );
+    }
+
+    function vimeoHandler(target) {
+        var matches = _vimeoRegex.exec(target);
+
+        if (!matches) {
+            return false;
+        }
+
+        return iframeHandler(
+            transferHash(
+                target,
+                appendQueryParams(
+                    'https://player.vimeo.com/video/' + matches[3],
+                    $.extend(
+                        {
+                            autoplay: 1
+                        },
+                        parseQueryParams(matches[4] || '')
+                    )
+                )
+            )
+        );
+    }
+
+    function facebookvideoHandler(target) {
+        var matches = _facebookvideoRegex.exec(target);
+
+        if (!matches) {
+            return false;
+        }
+
+        if (0 !== target.indexOf('http')) {
+            target = 'https:' + target;
+        }
+
+        return iframeHandler(
+            transferHash(
+                target,
+                appendQueryParams(
+                    'https://www.facebook.com/plugins/video.php?href=' + target,
+                    $.extend(
+                        {
+                            autoplay: 1
+                        },
+                        parseQueryParams(matches[4] || '')
+                    )
+                )
+            )
+        );
+    }
+
+    function googlemapsHandler(target) {
+        var matches = _googlemapsRegex.exec(target);
+
+        if (!matches) {
+            return false;
+        }
+
+        return iframeHandler(
+            transferHash(
+                target,
+                appendQueryParams(
+                    'https://www.google.' + matches[3] + '/maps?' + matches[6],
+                    {
+                        output: matches[6].indexOf('layer=c') > 0 ? 'svembed' : 'embed'
+                    }
+                )
+            )
+        );
+    }
+
+    function iframeHandler(target) {
+        return '<div class="lity-iframe-container"><iframe frameborder="0" allowfullscreen allow="autoplay; fullscreen" src="' + target + '"/></div>';
+    }
+
+    function winHeight() {
+        return document.documentElement.clientHeight
+            ? document.documentElement.clientHeight
+            : Math.round(_win.height());
+    }
+
+    function keydown(e) {
+        var current = currentInstance();
+
+        if (!current) {
+            return;
+        }
+
+        // ESC key
+        if (e.keyCode === 27 && !!current.options('esc')) {
+            current.close();
+        }
+
+        // TAB key
+        if (e.keyCode === 9) {
+            handleTabKey(e, current);
+        }
+    }
+
+    function handleTabKey(e, instance) {
+        var focusableElements = instance.element().find(_focusableElementsSelector);
+        var focusedIndex = focusableElements.index(document.activeElement);
+
+        if (e.shiftKey && focusedIndex <= 0) {
+            focusableElements.get(focusableElements.length - 1).focus();
+            e.preventDefault();
+        } else if (!e.shiftKey && focusedIndex === focusableElements.length - 1) {
+            focusableElements.get(0).focus();
+            e.preventDefault();
+        }
+    }
+
+    function resize() {
+        $.each(_instances, function(i, instance) {
+            instance.resize();
+        });
+    }
+
+    function registerInstance(instanceToRegister) {
+        if (1 === _instances.unshift(instanceToRegister)) {
+            _html.addClass('lity-active');
+
+            _win
+                .on({
+                    resize: resize,
+                    keydown: keydown
+                })
+            ;
+        }
+
+        $('body > *').not(instanceToRegister.element())
+            .addClass('lity-hidden')
+            .each(function() {
+                var el = $(this);
+
+                if (undefined !== el.data(_dataAriaHidden)) {
+                    return;
+                }
+
+                el.data(_dataAriaHidden, el.attr(_attrAriaHidden) || null);
+            })
+            .attr(_attrAriaHidden, 'true')
+        ;
+    }
+
+    function removeInstance(instanceToRemove) {
+        var show;
+
+        instanceToRemove
+            .element()
+            .attr(_attrAriaHidden, 'true')
+        ;
+
+        if (1 === _instances.length) {
+            _html.removeClass('lity-active');
+
+            _win
+                .off({
+                    resize: resize,
+                    keydown: keydown
+                })
+            ;
+        }
+
+        _instances = $.grep(_instances, function(instance) {
+            return instanceToRemove !== instance;
+        });
+
+        if (!!_instances.length) {
+            show = _instances[0].element();
+        } else {
+            show = $('.lity-hidden');
+        }
+
+        show
+            .removeClass('lity-hidden')
+            .each(function() {
+                var el = $(this), oldAttr = el.data(_dataAriaHidden);
+
+                if (!oldAttr) {
+                    el.removeAttr(_attrAriaHidden);
+                } else {
+                    el.attr(_attrAriaHidden, oldAttr);
+                }
+
+                el.removeData(_dataAriaHidden);
+            })
+        ;
+    }
+
+    function currentInstance() {
+        if (0 === _instances.length) {
+            return null;
+        }
+
+        return _instances[0];
+    }
+
+    function factory(target, instance, handlers, preferredHandler) {
+        var handler = 'inline', content;
+
+        var currentHandlers = $.extend({}, handlers);
+
+        if (preferredHandler && currentHandlers[preferredHandler]) {
+            content = currentHandlers[preferredHandler](target, instance);
+            handler = preferredHandler;
+        } else {
+            // Run inline and iframe handlers after all other handlers
+            $.each(['inline', 'iframe'], function(i, name) {
+                delete currentHandlers[name];
+
+                currentHandlers[name] = handlers[name];
+            });
+
+            $.each(currentHandlers, function(name, currentHandler) {
+                // Handler might be "removed" by setting callback to null
+                if (!currentHandler) {
+                    return true;
+                }
+
+                if (
+                    currentHandler.test &&
+                    !currentHandler.test(target, instance)
+                ) {
+                    return true;
+                }
+
+                content = currentHandler(target, instance);
+
+                if (false !== content) {
+                    handler = name;
+                    return false;
+                }
+            });
+        }
+
+        return {handler: handler, content: content || ''};
+    }
+
+    function Lity(target, options, opener, activeElement) {
+        var self = this;
+        var result;
+        var isReady = false;
+        var isClosed = false;
+        var element;
+        var content;
+
+        options = $.extend(
+            {},
+            _defaultOptions,
+            options
+        );
+
+        element = $(options.template);
+
+        // -- API --
+
+        self.element = function() {
+            return element;
+        };
+
+        self.opener = function() {
+            return opener;
+        };
+
+        self.options  = $.proxy(settings, self, options);
+        self.handlers = $.proxy(settings, self, options.handlers);
+
+        self.resize = function() {
+            if (!isReady || isClosed) {
+                return;
+            }
+
+            content
+                .css('max-height', winHeight() + 'px')
+                .trigger('lity:resize', [self])
+            ;
+        };
+
+        self.close = function() {
+            if (!isReady || isClosed) {
+                return;
+            }
+
+            isClosed = true;
+
+            removeInstance(self);
+
+            var deferred = _deferred();
+
+            // We return focus only if the current focus is inside this instance
+            if (
+                activeElement &&
+                (
+                    document.activeElement === element[0] ||
+                    $.contains(element[0], document.activeElement)
+                )
+            ) {
+                try {
+                    activeElement.focus();
+                } catch (e) {
+                    // Ignore exceptions, eg. for SVG elements which can't be
+                    // focused in IE11
+                }
+            }
+
+            content.trigger('lity:close', [self]);
+
+            element
+                .removeClass('lity-opened')
+                .addClass('lity-closed')
+            ;
+
+            transitionEnd(content.add(element))
+                .always(function() {
+                    content.trigger('lity:remove', [self]);
+                    element.remove();
+                    element = undefined;
+                    deferred.resolve();
+                })
+            ;
+
+            return deferred.promise();
+        };
+
+        // -- Initialization --
+
+        result = factory(target, self, options.handlers, options.handler);
+
+        element
+            .attr(_attrAriaHidden, 'false')
+            .addClass('lity-loading lity-opened lity-' + result.handler)
+            .appendTo('body')
+            .focus()
+            .on('click', '[data-lity-close]', function(e) {
+                if ($(e.target).is('[data-lity-close]')) {
+                    self.close();
+                }
+            })
+            .trigger('lity:open', [self])
+        ;
+
+        registerInstance(self);
+
+        $.when(result.content)
+            .always(ready)
+        ;
+
+        function ready(result) {
+            content = $(result)
+                .css('max-height', winHeight() + 'px')
+            ;
+
+            element
+                .find('.lity-loader')
+                .each(function() {
+                    var loader = $(this);
+
+                    transitionEnd(loader)
+                        .always(function() {
+                            loader.remove();
+                        })
+                    ;
+                })
+            ;
+
+            element
+                .removeClass('lity-loading')
+                .find('.lity-content')
+                .empty()
+                .append(content)
+            ;
+
+            isReady = true;
+
+            content
+                .trigger('lity:ready', [self])
+            ;
+        }
+    }
+
+    function lity(target, options, opener) {
+        if (!target.preventDefault) {
+            opener = $(opener);
+        } else {
+            target.preventDefault();
+            opener = $(this);
+            target = opener.data('lity-target') || opener.attr('href') || opener.attr('src');
+        }
+
+        var instance = new Lity(
+            target,
+            $.extend(
+                {},
+                opener.data('lity-options') || opener.data('lity'),
+                options
+            ),
+            opener,
+            document.activeElement
+        );
+
+        if (!target.preventDefault) {
+            return instance;
+        }
+    }
+
+    lity.version  = '2.4.1';
+    lity.options  = $.proxy(settings, lity, _defaultOptions);
+    lity.handlers = $.proxy(settings, lity, _defaultOptions.handlers);
+    lity.current  = currentInstance;
+
+    $(document).on('click.lity', '[data-lity]', lity);
+
+    return lity;
+}));
+
+
+/***/ }),
+
+/***/ "./node_modules/smoothscroll-polyfill/dist/smoothscroll.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/smoothscroll-polyfill/dist/smoothscroll.js ***!
+  \*****************************************************************/
+/***/ ((module) => {
+
+/* smoothscroll v0.4.4 - 2019 - Dustan Kasten, Jeremias Menichelli - MIT License */
+(function () {
+  'use strict';
+
+  // polyfill
+  function polyfill() {
+    // aliases
+    var w = window;
+    var d = document;
+
+    // return if scroll behavior is supported and polyfill is not forced
+    if (
+      'scrollBehavior' in d.documentElement.style &&
+      w.__forceSmoothScrollPolyfill__ !== true
+    ) {
+      return;
+    }
+
+    // globals
+    var Element = w.HTMLElement || w.Element;
+    var SCROLL_TIME = 468;
+
+    // object gathering original scroll methods
+    var original = {
+      scroll: w.scroll || w.scrollTo,
+      scrollBy: w.scrollBy,
+      elementScroll: Element.prototype.scroll || scrollElement,
+      scrollIntoView: Element.prototype.scrollIntoView
+    };
+
+    // define timing method
+    var now =
+      w.performance && w.performance.now
+        ? w.performance.now.bind(w.performance)
+        : Date.now;
+
+    /**
+     * indicates if a the current browser is made by Microsoft
+     * @method isMicrosoftBrowser
+     * @param {String} userAgent
+     * @returns {Boolean}
+     */
+    function isMicrosoftBrowser(userAgent) {
+      var userAgentPatterns = ['MSIE ', 'Trident/', 'Edge/'];
+
+      return new RegExp(userAgentPatterns.join('|')).test(userAgent);
+    }
+
+    /*
+     * IE has rounding bug rounding down clientHeight and clientWidth and
+     * rounding up scrollHeight and scrollWidth causing false positives
+     * on hasScrollableSpace
+     */
+    var ROUNDING_TOLERANCE = isMicrosoftBrowser(w.navigator.userAgent) ? 1 : 0;
+
+    /**
+     * changes scroll position inside an element
+     * @method scrollElement
+     * @param {Number} x
+     * @param {Number} y
+     * @returns {undefined}
+     */
+    function scrollElement(x, y) {
+      this.scrollLeft = x;
+      this.scrollTop = y;
+    }
+
+    /**
+     * returns result of applying ease math function to a number
+     * @method ease
+     * @param {Number} k
+     * @returns {Number}
+     */
+    function ease(k) {
+      return 0.5 * (1 - Math.cos(Math.PI * k));
+    }
+
+    /**
+     * indicates if a smooth behavior should be applied
+     * @method shouldBailOut
+     * @param {Number|Object} firstArg
+     * @returns {Boolean}
+     */
+    function shouldBailOut(firstArg) {
+      if (
+        firstArg === null ||
+        typeof firstArg !== 'object' ||
+        firstArg.behavior === undefined ||
+        firstArg.behavior === 'auto' ||
+        firstArg.behavior === 'instant'
+      ) {
+        // first argument is not an object/null
+        // or behavior is auto, instant or undefined
+        return true;
+      }
+
+      if (typeof firstArg === 'object' && firstArg.behavior === 'smooth') {
+        // first argument is an object and behavior is smooth
+        return false;
+      }
+
+      // throw error when behavior is not supported
+      throw new TypeError(
+        'behavior member of ScrollOptions ' +
+          firstArg.behavior +
+          ' is not a valid value for enumeration ScrollBehavior.'
+      );
+    }
+
+    /**
+     * indicates if an element has scrollable space in the provided axis
+     * @method hasScrollableSpace
+     * @param {Node} el
+     * @param {String} axis
+     * @returns {Boolean}
+     */
+    function hasScrollableSpace(el, axis) {
+      if (axis === 'Y') {
+        return el.clientHeight + ROUNDING_TOLERANCE < el.scrollHeight;
+      }
+
+      if (axis === 'X') {
+        return el.clientWidth + ROUNDING_TOLERANCE < el.scrollWidth;
+      }
+    }
+
+    /**
+     * indicates if an element has a scrollable overflow property in the axis
+     * @method canOverflow
+     * @param {Node} el
+     * @param {String} axis
+     * @returns {Boolean}
+     */
+    function canOverflow(el, axis) {
+      var overflowValue = w.getComputedStyle(el, null)['overflow' + axis];
+
+      return overflowValue === 'auto' || overflowValue === 'scroll';
+    }
+
+    /**
+     * indicates if an element can be scrolled in either axis
+     * @method isScrollable
+     * @param {Node} el
+     * @param {String} axis
+     * @returns {Boolean}
+     */
+    function isScrollable(el) {
+      var isScrollableY = hasScrollableSpace(el, 'Y') && canOverflow(el, 'Y');
+      var isScrollableX = hasScrollableSpace(el, 'X') && canOverflow(el, 'X');
+
+      return isScrollableY || isScrollableX;
+    }
+
+    /**
+     * finds scrollable parent of an element
+     * @method findScrollableParent
+     * @param {Node} el
+     * @returns {Node} el
+     */
+    function findScrollableParent(el) {
+      while (el !== d.body && isScrollable(el) === false) {
+        el = el.parentNode || el.host;
+      }
+
+      return el;
+    }
+
+    /**
+     * self invoked function that, given a context, steps through scrolling
+     * @method step
+     * @param {Object} context
+     * @returns {undefined}
+     */
+    function step(context) {
+      var time = now();
+      var value;
+      var currentX;
+      var currentY;
+      var elapsed = (time - context.startTime) / SCROLL_TIME;
+
+      // avoid elapsed times higher than one
+      elapsed = elapsed > 1 ? 1 : elapsed;
+
+      // apply easing to elapsed time
+      value = ease(elapsed);
+
+      currentX = context.startX + (context.x - context.startX) * value;
+      currentY = context.startY + (context.y - context.startY) * value;
+
+      context.method.call(context.scrollable, currentX, currentY);
+
+      // scroll more if we have not reached our destination
+      if (currentX !== context.x || currentY !== context.y) {
+        w.requestAnimationFrame(step.bind(w, context));
+      }
+    }
+
+    /**
+     * scrolls window or element with a smooth behavior
+     * @method smoothScroll
+     * @param {Object|Node} el
+     * @param {Number} x
+     * @param {Number} y
+     * @returns {undefined}
+     */
+    function smoothScroll(el, x, y) {
+      var scrollable;
+      var startX;
+      var startY;
+      var method;
+      var startTime = now();
+
+      // define scroll context
+      if (el === d.body) {
+        scrollable = w;
+        startX = w.scrollX || w.pageXOffset;
+        startY = w.scrollY || w.pageYOffset;
+        method = original.scroll;
+      } else {
+        scrollable = el;
+        startX = el.scrollLeft;
+        startY = el.scrollTop;
+        method = scrollElement;
+      }
+
+      // scroll looping over a frame
+      step({
+        scrollable: scrollable,
+        method: method,
+        startTime: startTime,
+        startX: startX,
+        startY: startY,
+        x: x,
+        y: y
+      });
+    }
+
+    // ORIGINAL METHODS OVERRIDES
+    // w.scroll and w.scrollTo
+    w.scroll = w.scrollTo = function() {
+      // avoid action when no arguments are passed
+      if (arguments[0] === undefined) {
+        return;
+      }
+
+      // avoid smooth behavior if not required
+      if (shouldBailOut(arguments[0]) === true) {
+        original.scroll.call(
+          w,
+          arguments[0].left !== undefined
+            ? arguments[0].left
+            : typeof arguments[0] !== 'object'
+              ? arguments[0]
+              : w.scrollX || w.pageXOffset,
+          // use top prop, second argument if present or fallback to scrollY
+          arguments[0].top !== undefined
+            ? arguments[0].top
+            : arguments[1] !== undefined
+              ? arguments[1]
+              : w.scrollY || w.pageYOffset
+        );
+
+        return;
+      }
+
+      // LET THE SMOOTHNESS BEGIN!
+      smoothScroll.call(
+        w,
+        d.body,
+        arguments[0].left !== undefined
+          ? ~~arguments[0].left
+          : w.scrollX || w.pageXOffset,
+        arguments[0].top !== undefined
+          ? ~~arguments[0].top
+          : w.scrollY || w.pageYOffset
+      );
+    };
+
+    // w.scrollBy
+    w.scrollBy = function() {
+      // avoid action when no arguments are passed
+      if (arguments[0] === undefined) {
+        return;
+      }
+
+      // avoid smooth behavior if not required
+      if (shouldBailOut(arguments[0])) {
+        original.scrollBy.call(
+          w,
+          arguments[0].left !== undefined
+            ? arguments[0].left
+            : typeof arguments[0] !== 'object' ? arguments[0] : 0,
+          arguments[0].top !== undefined
+            ? arguments[0].top
+            : arguments[1] !== undefined ? arguments[1] : 0
+        );
+
+        return;
+      }
+
+      // LET THE SMOOTHNESS BEGIN!
+      smoothScroll.call(
+        w,
+        d.body,
+        ~~arguments[0].left + (w.scrollX || w.pageXOffset),
+        ~~arguments[0].top + (w.scrollY || w.pageYOffset)
+      );
+    };
+
+    // Element.prototype.scroll and Element.prototype.scrollTo
+    Element.prototype.scroll = Element.prototype.scrollTo = function() {
+      // avoid action when no arguments are passed
+      if (arguments[0] === undefined) {
+        return;
+      }
+
+      // avoid smooth behavior if not required
+      if (shouldBailOut(arguments[0]) === true) {
+        // if one number is passed, throw error to match Firefox implementation
+        if (typeof arguments[0] === 'number' && arguments[1] === undefined) {
+          throw new SyntaxError('Value could not be converted');
+        }
+
+        original.elementScroll.call(
+          this,
+          // use left prop, first number argument or fallback to scrollLeft
+          arguments[0].left !== undefined
+            ? ~~arguments[0].left
+            : typeof arguments[0] !== 'object' ? ~~arguments[0] : this.scrollLeft,
+          // use top prop, second argument or fallback to scrollTop
+          arguments[0].top !== undefined
+            ? ~~arguments[0].top
+            : arguments[1] !== undefined ? ~~arguments[1] : this.scrollTop
+        );
+
+        return;
+      }
+
+      var left = arguments[0].left;
+      var top = arguments[0].top;
+
+      // LET THE SMOOTHNESS BEGIN!
+      smoothScroll.call(
+        this,
+        this,
+        typeof left === 'undefined' ? this.scrollLeft : ~~left,
+        typeof top === 'undefined' ? this.scrollTop : ~~top
+      );
+    };
+
+    // Element.prototype.scrollBy
+    Element.prototype.scrollBy = function() {
+      // avoid action when no arguments are passed
+      if (arguments[0] === undefined) {
+        return;
+      }
+
+      // avoid smooth behavior if not required
+      if (shouldBailOut(arguments[0]) === true) {
+        original.elementScroll.call(
+          this,
+          arguments[0].left !== undefined
+            ? ~~arguments[0].left + this.scrollLeft
+            : ~~arguments[0] + this.scrollLeft,
+          arguments[0].top !== undefined
+            ? ~~arguments[0].top + this.scrollTop
+            : ~~arguments[1] + this.scrollTop
+        );
+
+        return;
+      }
+
+      this.scroll({
+        left: ~~arguments[0].left + this.scrollLeft,
+        top: ~~arguments[0].top + this.scrollTop,
+        behavior: arguments[0].behavior
+      });
+    };
+
+    // Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function() {
+      // avoid smooth behavior if not required
+      if (shouldBailOut(arguments[0]) === true) {
+        original.scrollIntoView.call(
+          this,
+          arguments[0] === undefined ? true : arguments[0]
+        );
+
+        return;
+      }
+
+      // LET THE SMOOTHNESS BEGIN!
+      var scrollableParent = findScrollableParent(this);
+      var parentRects = scrollableParent.getBoundingClientRect();
+      var clientRects = this.getBoundingClientRect();
+
+      if (scrollableParent !== d.body) {
+        // reveal element inside parent
+        smoothScroll.call(
+          this,
+          scrollableParent,
+          scrollableParent.scrollLeft + clientRects.left - parentRects.left,
+          scrollableParent.scrollTop + clientRects.top - parentRects.top
+        );
+
+        // reveal parent in viewport unless is fixed
+        if (w.getComputedStyle(scrollableParent).position !== 'fixed') {
+          w.scrollBy({
+            left: parentRects.left,
+            top: parentRects.top,
+            behavior: 'smooth'
+          });
+        }
+      } else {
+        // reveal element in viewport
+        w.scrollBy({
+          left: clientRects.left,
+          top: clientRects.top,
+          behavior: 'smooth'
+        });
+      }
+    };
+  }
+
+  if (true) {
+    // commonjs
+    module.exports = { polyfill: polyfill };
+  } else // removed by dead control flow
+{}
+
+}());
+
+
+/***/ }),
+
+/***/ "./src/js/app.js":
+/*!***********************!*\
+  !*** ./src/js/app.js ***!
+  \***********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ CUSTOMIZE)
+/* harmony export */ });
+/* harmony import */ var _core_coreApp__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./core/coreApp */ "./src/js/core/coreApp.js");
+/* harmony import */ var _components_lazydisp__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./components/lazydisp */ "./src/js/components/lazydisp.js");
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! jquery */ "jquery");
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(jquery__WEBPACK_IMPORTED_MODULE_2__);
+
+
+
+const [d] = [document];
+class CUSTOMIZE extends _core_coreApp__WEBPACK_IMPORTED_MODULE_0__["default"] {
+  constructor(opt) {
+    opt = Object.assign({
+      // header: '.site-header',
+      // pagetop: '.c-pagetop'
+      // fixNavを指定すると、スクロール時に固定するクラスを付与する
+      // fixNav : '[data-role="fixNav"]',
+    }, opt);
+
+    // 上位クラスのコンストラクタ呼び出し
+    super(opt);
+    this.customInit();
+  }
+  customInit() {
+    // イベント一覧
+    d.addEventListener('app.beforeInit', () => false);
+    d.addEventListener('app.beforeDomready', () => false);
+    d.addEventListener('app.beforeWindowload', () => false);
+    d.addEventListener('app.zip2addr', () => false);
+    d.addEventListener('Scroll.beforeInit', () => false);
+    d.addEventListener('Scroll.scrollUp', () => false);
+    d.addEventListener('Scroll.scrollDown', () => false);
+    d.addEventListener('Lazydisp.beforeInit', () => false);
+
+    // テンプレートインスタンスのプロミス
+    this.promises.init.then(() => false);
+    this.promises.domReady.then(() => false);
+    this.promises.windowLoad.then(() => false);
+
+    // テンプレートインスタンスの全非同期メソッドの完了時に実行
+    this.promiseAll().then(() => false);
+    jquery__WEBPACK_IMPORTED_MODULE_2___default()(() => {
+      // htmlデータ読み込み
+      jquery__WEBPACK_IMPORTED_MODULE_2___default()('[data-load-html]').loadHtml();
+
+      // カレントメニュー
+      jquery__WEBPACK_IMPORTED_MODULE_2___default()('[data-plugin=currentMenu]').currentMenu({
+        mode: 0,
+        default: 999
+      });
+      Promise.all([window.load['loadHtml']]).then(() => this.hashscroll());
+      Promise.all([window.load['loadHtml']]).then(() => new _components_lazydisp__WEBPACK_IMPORTED_MODULE_1__["default"]('[data-lazydisp]'));
+    });
+  }
+  loading() {
+    d.documentElement.classList.add(this.opt.loadingClass);
+    d.documentElement.classList.add('is-pageload-available');
+    d.addEventListener('DOMContentLoaded', () => {
+      d.documentElement.classList.remove(this.opt.loadingClass);
+      d.documentElement.style.opacity = '';
+    });
+  }
+}
+
+/***/ }),
+
+/***/ "./src/js/components/FirstViewEndObserver.js":
+/*!***************************************************!*\
+  !*** ./src/js/components/FirstViewEndObserver.js ***!
+  \***************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ FirstViewEndObserver)
+/* harmony export */ });
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! jquery */ "jquery");
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(jquery__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _core_scrollObserver__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../core/scrollObserver */ "./src/js/core/scrollObserver.js");
+
+
+const [d] = [document];
+class FirstViewEndObserver extends _core_scrollObserver__WEBPACK_IMPORTED_MODULE_1__["default"] {
+  //newしたときに実行される
+  constructor(elm = d.querySelector('.js-pagetop'), opt = {}) {
+    opt = Object.assign({
+      rootMargin: "0%"
+    }, opt);
+    super(opt);
+    this.$observeElement = jquery__WEBPACK_IMPORTED_MODULE_0___default()('<div/>');
+    this.$observeElement.css({
+      'position': 'absolute',
+      'top': '0',
+      'left': '0',
+      'display': 'block',
+      'width': '0',
+      'height': '100vh',
+      'pointer-events': 'none',
+      'visibility': 'hidden',
+      'z-index': '-1'
+    });
+    this.$observeElement.appendTo('#allbox');
+    this.pagetopBlock = elm;
+    if (this.pagetopBlock) {
+      this.observeElement();
+    }
+  }
+  observeElement() {
+    this.observer = new IntersectionObserver(this.callback.bind(this), this.opt);
+    this.observer.observe(this.$observeElement[0]);
+  }
+  intersectIn() {
+    this.pagetopBlock.classList.add('hidden');
+  }
+  intersectOut() {
+    this.pagetopBlock.classList.remove('hidden');
+  }
+}
+
+/***/ }),
+
+/***/ "./src/js/components/lazydisp.js":
+/*!***************************************!*\
+  !*** ./src/js/components/lazydisp.js ***!
+  \***************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ LazyDisp)
+/* harmony export */ });
+/* harmony import */ var _core_scrollObserver__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../core/scrollObserver */ "./src/js/core/scrollObserver.js");
+
+const [d] = [document];
+class LazyDisp extends _core_scrollObserver__WEBPACK_IMPORTED_MODULE_0__["default"] {
+  constructor(selector, opt) {
+    opt = Object.assign({
+      // root: null, // ビューポートをルート要素とする
+      // rootMargin: "20% 0px -20%", // ビューポートの中心を判定基準にする
+      // threshold: 0 // 閾値は0
+    }, opt);
+    super(opt);
+    this.init(selector);
+  }
+  init(selector) {
+    // DOMContentLoaded
+    d.dispatchEvent(new CustomEvent('Lazydisp.beforeInit', {
+      detail: this
+    }));
+    d.querySelectorAll(selector).forEach(elm => {
+      elm.classList.add('lazyhide');
+      elm.classList.add('lazyReady');
+      setTimeout(() => elm.classList.remove('lazyReady'), 200);
+    });
+    this.observeElement(selector);
+  }
+  intersectIn(entry, object) {
+    const target = entry.target;
+    target.classList.remove('lazyhide');
+    if (target.dataset.lazyAddclass != undefined) {
+      target.classList.add(target.dataset.lazyAddclass);
+    }
+    object.unobserve(target);
+  }
+}
+
+/***/ }),
+
+/***/ "./src/js/components/scrollDir.js":
+/*!****************************************!*\
+  !*** ./src/js/components/scrollDir.js ***!
+  \****************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ ScrollDir)
+/* harmony export */ });
+const [w, d] = [window, document];
+class ScrollDir {
+  constructor(opt) {
+    this.opt = Object.assign({
+      mq: w.matchMedia('(max-width: 900px)')
+    }, opt);
+    this.init();
+  }
+  init() {
+    d.dispatchEvent(new CustomEvent('Scroll.beforeInit', {
+      detail: this
+    }));
+    this.scrollDir();
+  }
+
+  // スクロール方向の判定
+  scrollDir() {
+    let lastpos = 0;
+    let timer = null;
+    let FPS = 1000 / 60;
+    const scrollFunc = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!this.opt.mq.matches) return false;
+        let pos = w.pageYOffset || d.documentElement.scrollTop;
+        if (pos < lastpos) this.scrollUp();else this.scrollDown();
+        lastpos = pos;
+      }, FPS);
+    };
+    w.addEventListener('scroll', () => scrollFunc.call(this));
+  }
+  scrollUp() {
+    d.dispatchEvent(new CustomEvent('Scroll.scrollUp', {
+      detail: this
+    }));
+  }
+  scrollDown() {
+    d.dispatchEvent(new CustomEvent('Scroll.scrollDown', {
+      detail: this
+    }));
+  }
+}
+
+/***/ }),
+
+/***/ "./src/js/core/coreApp.js":
+/*!********************************!*\
+  !*** ./src/js/core/coreApp.js ***!
+  \********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ CoreApp)
+/* harmony export */ });
+/* harmony import */ var lity__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lity */ "./node_modules/lity/dist/lity.js");
+/* harmony import */ var lity__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lity__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var smoothscroll_polyfill__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! smoothscroll-polyfill */ "./node_modules/smoothscroll-polyfill/dist/smoothscroll.js");
+/* harmony import */ var smoothscroll_polyfill__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(smoothscroll_polyfill__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var _components_lazydisp__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../components/lazydisp */ "./src/js/components/lazydisp.js");
+/* harmony import */ var _components_scrollDir__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../components/scrollDir */ "./src/js/components/scrollDir.js");
+/* harmony import */ var _components_FirstViewEndObserver__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../components/FirstViewEndObserver */ "./src/js/components/FirstViewEndObserver.js");
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! jquery */ "jquery");
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(jquery__WEBPACK_IMPORTED_MODULE_5__);
+
+
+
+
+
+
+const [w, d, l, mq] = [window, document, location, window.matchMedia("(max-width: 1023px)")];
+class CoreApp {
+  constructor(opt) {
+    // settings
+    this.opt = Object.assign({
+      loading: true,
+      loadingClass: 'is-loading',
+      gnav: '[data-role="globalNav"]',
+      fnav: '[data-role="footerNav"]',
+      lazydisp: '[data-lazydisp]',
+      csspreload: 'link[rel="preload"][as="style"]',
+      fixNav: false,
+      header: '.l-header',
+      pagetop: '.js-pagetop',
+      viewport: {
+        mq: w.matchMedia('screen and (min-width:1195px)'),
+        content_device: 'width=device-width,initial-scale=1',
+        content_scale: 'width=1280'
+      },
+      hashscroll: {
+        pagetopHash: '#pagetop',
+        mq: w.matchMedia('(max-width:899px)')
+      },
+      zip2addr: '[data-plugin="zip2addr"]'
+    }, opt);
+
+    // Promiseオブジェクトを生成、実行
+    this.promises = {
+      init: new Promise(resolve => this.initResolver = resolve),
+      domReady: new Promise(resolve => {
+        d.addEventListener('DOMContentLoaded', () => {
+          this.domReady();
+          resolve(this);
+        }, {
+          once: true
+        });
+      }),
+      windowLoad: new Promise(resolve => {
+        w.addEventListener('load', () => {
+          this.windowLoad();
+          resolve(this);
+        }, {
+          once: true
+        });
+      })
+    };
+
+    // スクロール方向を判定するインスタンス
+    this.ScrollDir = new _components_scrollDir__WEBPACK_IMPORTED_MODULE_3__["default"]();
+  }
+  init() {
+    // イベント発火
+    d.dispatchEvent(new CustomEvent('app.beforeInit', {
+      detail: this
+    }));
+
+    // ページローディングエフェクト
+    if (this.opt.loading) this.loading();
+
+    // initの解決
+    this.initResolver(this);
+
+    // Viewportの書き換え
+    this.viewport();
+  }
+  domReady() {
+    // イベント発火
+    d.dispatchEvent(new CustomEvent('app.beforeDomready', {
+      detail: this
+    }));
+
+    // LazyDisp開始
+    this.LazyDisp = new _components_lazydisp__WEBPACK_IMPORTED_MODULE_2__["default"](this.opt.lazydisp);
+
+    // FixNav
+    if (this.opt.fixNav) this.fixNav(this.opt.fixNav);
+
+    // Pagetop
+    this.pagetop();
+
+    // pagetopなどhashスクロール
+    this.hashscroll();
+
+    // lightbox
+    jquery__WEBPACK_IMPORTED_MODULE_5___default()(d).on('click', 'a[rel="lightbox"]', (lity__WEBPACK_IMPORTED_MODULE_0___default()));
+
+    // 郵便番号から住所を取得
+    this.zip2addr();
+  }
+  windowLoad() {
+    // イベント発火
+    d.dispatchEvent(new CustomEvent('app.beforeWindowload', {
+      detail: this
+    }));
+
+    // スタイル遅延ロード開始
+    this.csspreload();
+  }
+  promiseAll() {
+    return Promise.all(Object.values(this.promises));
+  }
+  loading() {
+    d.documentElement.style.opacity = "0";
+    d.documentElement.classList.add(this.opt.loadingClass);
+    d.documentElement.classList.add('is-pageload-available');
+    w.addEventListener('load', () => {
+      d.documentElement.classList.remove(this.opt.loadingClass);
+      d.documentElement.style.opacity = '';
+    });
+  }
+  fixNav(selector) {
+    // fixnavがある場合にクラスをトグルする
+    const elm = d.querySelector(selector);
+    d.addEventListener('Scroll.scrollUp', () => elm.classList.add('is-active'));
+    d.addEventListener('Scroll.scrollDown', () => elm.classList.remove('is-active'));
+  }
+  hashscroll(top = 0) {
+    smoothscroll_polyfill__WEBPACK_IMPORTED_MODULE_1___default().polyfill();
+    let {
+      pagetopHash,
+      mq
+    } = this.opt.hashscroll;
+    // pagetopハッシュの処理
+    const scroll = () => {
+      if (!l.hash) return;
+      if (l.hash === pagetopHash) {
+        w.history.replaceState(null, '', l.pathname + l.search);
+      } else {
+        const hash = decodeURI(l.hash);
+        const targetElement = d.querySelector(hash);
+        const headerElement = d.querySelector(this.opt.header);
+        // 画面上部から要素までの距離
+        const rectTop = targetElement ? targetElement.getBoundingClientRect().top : 0;
+        // スクロール位置に持たせるバッファ
+        const buffer = mq.matches ? headerElement.offsetHeight : 0;
+        top = rectTop + w.pageYOffset - buffer;
+      }
+      w.scrollTo({
+        top,
+        behavior: 'smooth'
+      });
+    };
+    scroll();
+    w.addEventListener('hashchange', scroll);
+  }
+  viewport() {
+    // viewportの内容を変更
+    const {
+      mq,
+      content_device,
+      content_scale
+    } = this.opt.viewport;
+    const meta = d.querySelector('meta[name="viewport"]');
+    const mqListener = e => {
+      if (e.matches) {
+        meta.setAttribute('content', content_scale);
+      } else {
+        meta.setAttribute('content', content_device);
+      }
+    };
+    mq.addEventListener("change", mqListener);
+
+    // 初期化処理
+    mqListener(mq);
+  }
+  zip2addr() {
+    const btns = d.querySelectorAll(this.opt.zip2addr);
+    const Zenkaku2Hankaku = str => str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+    const applyAddr = (res, pref, addr) => {
+      pref.value = res.address1;
+      addr.value = res.address2 + res.address3;
+    };
+    const getAddr = btn => {
+      const apiurl = new URL('https://zipcloud.ibsnet.co.jp/api/search');
+      const container = btn.closest('.js-form-item');
+      let zip = container.querySelector('[name="GetAdrsZip"]').value;
+      const pref = container.querySelector('[name="GetAdrsPref"]');
+      const addr = container.querySelector('[name="GetAdrs"]');
+      zip = Zenkaku2Hankaku(zip).replace(/(-|−|ー)/g, '');
+      apiurl.searchParams.append('zipcode', Zenkaku2Hankaku(zip));
+      fetch(apiurl.href).then(res => res.json()).then(res => {
+        // 住所が正しく取得できた場合
+        if (res.results && res.results.length > 0) applyAddr(res.results[0], pref, addr);
+        // イベント発火
+        d.dispatchEvent(new CustomEvent('app.zip2addr', {
+          detail: {
+            btn,
+            res
+          }
+        }));
+      });
+    };
+    btns.forEach(btn => btn.addEventListener('click', () => getAddr(btn)));
+  }
+  csspreload() {
+    const links = d.querySelectorAll(this.opt.csspreload);
+    links.forEach(link => link.rel = "stylesheet");
+  }
+  pagetop() {
+    if (!mq.matches) {
+      const pagetop = d.querySelector(this.opt.pagetop);
+      new _components_FirstViewEndObserver__WEBPACK_IMPORTED_MODULE_4__["default"](pagetop);
+    }
+  }
+}
+
+/***/ }),
+
+/***/ "./src/js/core/scrollObserver.js":
+/*!***************************************!*\
+  !*** ./src/js/core/scrollObserver.js ***!
+  \***************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ ScrollObserver)
+/* harmony export */ });
+/* harmony import */ var intersection_observer__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! intersection-observer */ "./node_modules/intersection-observer/intersection-observer.js");
+/* harmony import */ var intersection_observer__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(intersection_observer__WEBPACK_IMPORTED_MODULE_0__);
+ //polyfill
+
+const [d] = [document];
+class ScrollObserver {
+  constructor(opt) {
+    this.opt = Object.assign({
+      root: null,
+      // ビューポートをルート要素とする
+      rootMargin: "20% 0px -20%",
+      // ビューポートの中心を判定基準にする
+      threshold: 0 // 閾値は0
+    }, opt);
+  }
+
+  // スクロールの交差を監視
+  observeElement(selector) {
+    // DOMContentLoaded
+    // Observerのインスタンス化
+    this.observer = new IntersectionObserver(this.callback.bind(this), this.opt);
+    // 指定した要素の監視を開始
+    d.querySelectorAll(selector).forEach(target => this.observer.observe(target));
+  }
+  callback(entries, object) {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) this.intersectIn(entry, object);else this.intersectOut(entry, object);
+    });
+  }
+  intersectIn(entry, object) {
+    return entry, object;
+  }
+  intersectOut(entry, object) {
+    return entry, object;
+  }
+}
+
+/***/ }),
+
+/***/ "./src/js/pages/home.js":
+/*!******************************!*\
+  !*** ./src/js/pages/home.js ***!
+  \******************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ HOME)
+/* harmony export */ });
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! jquery */ "jquery");
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(jquery__WEBPACK_IMPORTED_MODULE_0__);
+
+const [d] = [document];
+const domReady = TPL => false;
+const jqInit = () => false;
+function HOME() {
+  // テンプレートが用意したDOMContentLoaded（テンプレートインスタンスが引数に入る）
+  d.addEventListener('app.beforeDomready', e => domReady(e.detail));
+  jquery__WEBPACK_IMPORTED_MODULE_0___default()(() => jqInit());
+}
+
+/***/ }),
+
+/***/ "./src/js/utils/utility.js":
+/*!*********************************!*\
+  !*** ./src/js/utils/utility.js ***!
+  \*********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ Utility)
+/* harmony export */ });
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! jquery */ "jquery");
+/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(jquery__WEBPACK_IMPORTED_MODULE_0__);
+
+const [w, d, l] = [window, document, location];
+class Utility {
+  constructor() {
+    this.init();
+  }
+  init() {
+    /******
+     * 文字数制限(プロトタイプ拡張)
+     */
+    String.prototype.str_truncate = function (figure, suffix = '...') {
+      const textLength = this.length,
+        textTrim = this.substr(0, figure);
+      if (figure < textLength) return textTrim + suffix;else if (figure >= textLength) return textTrim;
+    };
+
+    // ポップアップウインドウ
+    jquery__WEBPACK_IMPORTED_MODULE_0___default()(d).on('click', '[data-plugin="openwindow"]', function (e) {
+      e.preventDefault();
+      var $this = jquery__WEBPACK_IMPORTED_MODULE_0___default()(this),
+        data = $this.data(),
+        size = 'width=' + (data.width || 600) + ', height=' + (data.height || 500) + ',';
+      w.open(this.href, data.title || 'share this site', size + "menubar=no, toolbar=no, scrollbars=yes");
+    });
+
+    // カレントメニュープラグイン
+    // [option]
+    // - currentClass: str
+    //     カレントメニューに付与するクラス名設定(def:'current')
+    // - item: jquery selector
+    //     クラスを付与するアイテム(def:'a')
+    // - mode: 0|1
+    //     0:完全一致か1:ディレクトリマッチか(def:0)
+    // - default: num
+    //     見つからなかった場合のデフォルトメニュー位置(def:0)
+    // - url: str
+    //     現在のURLを偽装する場合に変更できます(def:location.pathname+location.search)
+    // [戻り値]
+    // jQuery Object
+    (jquery__WEBPACK_IMPORTED_MODULE_0___default().fn).currentMenu = function (option) {
+      return this.each(function () {
+        var opt = jquery__WEBPACK_IMPORTED_MODULE_0___default().extend(true, {
+            currentClass: 'current',
+            item: 'a',
+            // loop item
+            mode: 0,
+            // 0: parfectMatch, 1:directoryMatch
+            default: 0,
+            url: location.pathname + location.search
+          }, option, jquery__WEBPACK_IMPORTED_MODULE_0___default()(this).data()),
+          addCurrent = function (dom) {
+            jquery__WEBPACK_IMPORTED_MODULE_0___default()(dom).addClass(opt.currentClass);
+          };
+        jquery__WEBPACK_IMPORTED_MODULE_0___default()(opt.item, this).each(function () {
+          var href = this.getAttribute('href') || jquery__WEBPACK_IMPORTED_MODULE_0___default()(this).children('a').attr('href'),
+            url = opt.url;
+          if (opt.mode !== 0) {
+            href = href.replace(/^\/([^/]+)\/(.*)?/, '/$1/');
+            url = url.replace(/^\/([^/]+)\/(.*)?/, '/$1/');
+          }
+          if (url == href) addCurrent(this);
+        });
+        // fallback
+        if (jquery__WEBPACK_IMPORTED_MODULE_0___default()('.' + opt.currentClass, this).length == 0) addCurrent(jquery__WEBPACK_IMPORTED_MODULE_0___default()(opt.item, this).eq(opt.default));
+      });
+    };
+
+    // HTML読み込みプラグイン(ES5対応/slot対応)
+    (jquery__WEBPACK_IMPORTED_MODULE_0___default().fn).loadHtml = function (option) {
+      w.load = w.load || {};
+      var g_opt = jquery__WEBPACK_IMPORTED_MODULE_0___default().extend({
+        src: '/assets/html/',
+        extention: '.html',
+        timestamp: ''
+      }, option);
+      var defs = [];
+      if (!w.load['loadHtml']) w.load['loadHtml'] = new (jquery__WEBPACK_IMPORTED_MODULE_0___default().Deferred)();
+      this.each(function () {
+        w.load = w.load || {};
+        var $this = jquery__WEBPACK_IMPORTED_MODULE_0___default()(this),
+          opt = jquery__WEBPACK_IMPORTED_MODULE_0___default().extend(true, {}, g_opt, $this.data()),
+          request_url = opt.src + opt.loadHtml + opt.extention,
+          slot_html = $this.html();
+        w.load[opt.name ? opt.name : opt.loadHtml] = new (jquery__WEBPACK_IMPORTED_MODULE_0___default().Deferred)();
+        defs.push(w.load[opt.name ? opt.name : opt.loadHtml].promise());
+        jquery__WEBPACK_IMPORTED_MODULE_0___default().get(request_url + (opt.timestamp ? '?ts=' + opt.timestamp : ''), function (html) {
+          $this.replaceWith(html);
+          console.info('%c%s%c is loaded', 'font-weight: bold', this.url, '');
+          w.load[opt.name ? opt.name : opt.loadHtml].resolve(html, slot_html != '&nbsp;' ? slot_html : null);
+          jquery__WEBPACK_IMPORTED_MODULE_0___default()(w).trigger($this.data().loadHtml + '.load');
+        });
+      });
+      jquery__WEBPACK_IMPORTED_MODULE_0___default().when.apply((jquery__WEBPACK_IMPORTED_MODULE_0___default()), defs).then(function () {
+        w.load['loadHtml'].resolve();
+      });
+      return this;
+    };
+  }
+
+  // query_stringを定義
+  query_string(param) {
+    if (!l.search) return false;
+    let params = l.search.substr(1).split('&');
+    params.map(v => {
+      const p = v.split('=');
+      params[p[0]] = p[1];
+    });
+    return params[param];
+  }
+  addScript(attrs) {
+    const [s] = [document, 'script'];
+    const f = d.getElementsByTagName(s)[0],
+      j = d.createElement(s);
+    Object.keys(attrs).forEach(a => j.setAttribute(a, attrs[a]));
+    f.parentNode.insertBefore(j, f);
+  }
+  addStylesheet(attrs) {
+    const [s] = [document, 'link'];
+    const f = d.getElementsByTagName(s)[0],
+      j = d.createElement(s);
+    j.rel = "stylesheet";
+    Object.keys(attrs).forEach(a => j.setAttribute(a, attrs[a]));
+    f.parentNode.appendChild(j);
+  }
+  datetostr(unixtime, format) {
+    const date = new Date(unixtime);
+    const month = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+    const weekday = ["日", "月", "火", "水", "木", "金", "土"];
+    const weekday_en = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    format = format.replace(/YYYY/g, date.getFullYear()).replace(/MMMM/g, month[date.getMonth()]).replace(/MMM/g, month[date.getMonth()].slice(3)).replace(/MM/g, ('0' + (date.getMonth() + 1)).slice(-2)).replace(/DD/g, ('0' + date.getDate()).slice(-2)).replace(/D/g, date.getDate()).replace(/dddd/g, weekday_en[date.getDay()]).replace(/ddd/g, weekday_en[date.getDay()].slice(3)).replace(/dd/g, weekday[date.getDay()]).replace(/hh/g, ('0' + date.getHours()).slice(-2)).replace(/mm/g, ('0' + date.getMinutes()).slice(-2)).replace(/ss/g, ('0' + date.getSeconds()).slice(-2));
+    return format;
+  }
+
+  /*****
+   * URLによる読み込み分岐
+   */
+  loader(loaderSwitch) {
+    // 条件分岐のためのURL正規化
+    let mode, key, id;
+    mode = this.query_string('mode');
+    id = this.query_string('article');
+    if (mode == 'detail') key = 'article';else if (mode == 'list' && id) key = 'cat';
+    let path = l.pathname.replace('main.php', '');
+    let request = mode && key && id ? path + `?mode=${mode}&${key}=${id}` : path;
+    loaderSwitch(request, path);
+  }
+}
+
+/***/ }),
+
+/***/ "./src/scss/customize.scss":
+/*!*********************************!*\
+  !*** ./src/scss/customize.scss ***!
+  \*********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+// extracted by mini-css-extract-plugin
+
+
+/***/ }),
+
+/***/ "jquery":
+/*!*************************!*\
+  !*** external "jQuery" ***!
+  \*************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = window["jQuery"];
+
+/***/ })
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	/* webpack/runtime/compat get default export */
+/******/ 	(() => {
+/******/ 		// getDefaultExport function for compatibility with non-harmony modules
+/******/ 		__webpack_require__.n = (module) => {
+/******/ 			var getter = module && module.__esModule ?
+/******/ 				() => (module['default']) :
+/******/ 				() => (module);
+/******/ 			__webpack_require__.d(getter, { a: getter });
+/******/ 			return getter;
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	(() => {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__webpack_require__.d = (exports, definition) => {
+/******/ 			for(var key in definition) {
+/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	(() => {
+/******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/************************************************************************/
+var __webpack_exports__ = {};
+// This entry needs to be wrapped in an IIFE because it needs to be in strict mode.
+(() => {
+"use strict";
+/*!************************!*\
+  !*** ./src/js/main.js ***!
+  \************************/
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _scss_customize_scss__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../scss/customize.scss */ "./src/scss/customize.scss");
+/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./utils/utility */ "./src/js/utils/utility.js");
+/* harmony import */ var _app__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./app */ "./src/js/app.js");
+/* harmony import */ var _pages_home__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./pages/home */ "./src/js/pages/home.js");
+
+
+
+
+
+// ユーティリティクラスのインスタンス化
+const UTIL = new _utils_utility__WEBPACK_IMPORTED_MODULE_1__["default"]();
+
+// テンプレートインスタンス化（promise登録）
+const TPL = new _app__WEBPACK_IMPORTED_MODULE_2__["default"]();
+
+// URLによる関数の実行
+UTIL.loader((request, path) => {
+  switch (path) {
+    case '/':
+      (0,_pages_home__WEBPACK_IMPORTED_MODULE_3__["default"])();
+      break;
+  }
+  // switch( request ){}
+});
+
+// テンプレートインスタンスの初期化（イベント発火）
+TPL.init();
+})();
+
+/******/ })()
+;
+//# sourceMappingURL=customize.js.map

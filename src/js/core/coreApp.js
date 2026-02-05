@@ -3,6 +3,7 @@ import smoothscroll from "smoothscroll-polyfill";
 import LazyDisp from "../components/lazydisp";
 import ScrollDir from "../components/scrollDir";
 import FirstViewEndObserver from "../components/FirstViewEndObserver";
+import $ from 'jquery';
 
 const [w,d,l,mq] = [window, document, location, window.matchMedia( "(max-width: 1023px)" ) ];
 

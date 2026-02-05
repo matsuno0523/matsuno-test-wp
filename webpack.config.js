@@ -1,42 +1,42 @@
-// UglifyJsPluginなどのプラグインを利用するためにwebpackを読み込んでおく必要がある。
-const webpack = require('webpack');
-const ESLintPlugin = require('eslint-webpack-plugin');
-
-// output.pathに絶対パスを指定する必要があるため、pathモジュールを読み込んでおく
-const path = require('path');
+const defaultConfig = require( '@wordpress/scripts/config/webpack.config' );
+const path = require( 'path' );
+const MiniCssExtractPlugin = require( 'mini-css-extract-plugin' );
 
 module.exports = {
-  // エントリーポイントの設定
-  entry: './src/js/main.js',
-  // 出力の設定
-  output: {
-    // 出力するファイル名
-    filename: 'customize.min.js',
-    // 出力先のパス（v2系以降は絶対パスを指定する必要がある）
-    path: path.join(__dirname, 'public_html/assets/js')
-  },
-  // ローダーの設定
-  module: {
-    rules: [{
-      // ローダーの処理対象ファイル
-      test: /\.js$/,
-      // ローダーの処理対象から外すディレクトリ
-      exclude: /node_modules/,
-      use: {
-        // 利用するローダー
-        loader: 'babel-loader',
-        // ローダーのオプション
-        options: {
-          presets: ['@babel/preset-env']
-        }
-      },
-    }],
-  },
-  // プラグインの設定
-  plugins: [
-    new ESLintPlugin(),
-    new webpack.ProvidePlugin({
-      $: 'jquery',
-    }),
-  ]
+	...defaultConfig,
+	entry: {
+		'customize': path.resolve( process.cwd(), 'src/js', 'main.js' ),
+	},
+	output: {
+		path: path.resolve( process.cwd(), 'public_html/assets' ),
+		filename: 'js/[name].js',
+		clean: {
+			keep: /webfonts|img|svg/,
+		},
+	},
+	module: {
+        ...defaultConfig.module,
+        rules: [
+            ...defaultConfig.module.rules,
+            {
+                test: /\.(woff|woff2|eot|ttf|otf)$/i,
+                type: 'asset/resource',
+                generator: {
+                    emit: false,
+                },
+            },
+        ],
+    },
+	plugins: [
+		...defaultConfig.plugins.filter(
+			( plugin ) => plugin.constructor.name !== 'RtlCssPlugin'
+		).map( ( plugin ) => {
+			if ( plugin.constructor.name === 'MiniCssExtractPlugin' ) {
+				return new MiniCssExtractPlugin( {
+					filename: 'css/customize.css',
+				} );
+			}
+			return plugin;
+		} ),
+	],
 };

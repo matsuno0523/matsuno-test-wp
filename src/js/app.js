@@ -1,5 +1,6 @@
 import CoreApp from "./core/coreApp";
 import LazyDisp from "./components/lazydisp";
+import $ from 'jquery';
 
 const [d] = [document];
 

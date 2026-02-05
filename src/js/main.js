@@ -1,3 +1,4 @@
+import '../scss/customize.scss';
 import Utility from "./utils/utility";
 import App from "./app";
 import HOME from "./pages/home";

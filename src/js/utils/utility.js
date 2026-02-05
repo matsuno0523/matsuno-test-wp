@@ -1,3 +1,4 @@
+import $ from 'jquery';
 const [w,d,l] = [window,document,location];
 export default class Utility {
   

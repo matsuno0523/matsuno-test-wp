@@ -1,3 +1,4 @@
+import $ from 'jquery';
 import ScrollObserver from '../core/scrollObserver';
 
 const [ d ] = [document]
@@ -23,7 +24,9 @@ export default class FirstViewEndObserver extends ScrollObserver {
     });
     this.$observeElement.appendTo('#allbox');
     this.pagetopBlock = elm;
-    this.observeElement()
+    if (this.pagetopBlock) {
+      this.observeElement();
+    }
   }
 
   observeElement () {

@@ -4,13 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "gulp & npm run webpack & npm run serve",
-    "sass": "gulp sass",
-    "svgSprite": "gulp svgSprite",
-    "webpack": "webpack --progress --devtool source-map --watch --mode development",
-    "webpack:prod": "webpack --progress --devtool source-map --mode production",
-    "serve": "browser-sync --no-notify --no-ghost-mode  --proxy localhost:8080 start --files './assets/css/**/*.css, ./assets/js/**/*.js'",
-    "avif": "gulp avif"
+    "start": "run-p watch:all serve",
+    "watch:all": "wp-scripts start",
+    "build": "wp-scripts build",
+    "serve": "browser-sync start --proxy 'localhost:8080' --files './public_html/assets/css/*.css, ./public_html/assets/js/*.js' --no-notify --no-ghost-mode",
+    "svg": "gulp svgSprite",
+    "avif": "gulp avif",
+    "copy-assets": "gulp copyFonts"
   },
   "browserslist": [
     "> 0.2%",
@@ -19,11 +19,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@babel/core": "^7.24.0",
-    "@babel/eslint-parser": "^7.27.5",
-    "@babel/preset-env": "^7.24.0",
+    "@wordpress/scripts": "^31.2.0",
     "autoprefixer": "^10.4.2",
-    "babel-loader": "^8.2.3",
     "browser-sync": "^2.27.7",
     "core-js": "^3.21.1",
     "cssnano": "^6.0.0",
@@ -37,16 +34,13 @@
     "gulp-plumber": "^1.2.1",
     "gulp-postcss": "^9.0.1",
     "gulp-rename": "^2.0.0",
-    "gulp-sass": "^5.1.0",
-    "gulp-sass-glob": "^1.1.0",
     "gulp-sourcemaps": "^3.0.0",
     "gulp-svg-sprite": "^1.5.0",
     "intersection-observer": "^0.12.0",
+    "npm-run-all": "^4.1.5",
     "path": "^0.12.7",
     "sass": "^1.89.1",
-    "smoothscroll-polyfill": "^0.4.4",
-    "webpack": "^5.69.1",
-    "webpack-cli": "^4.9.2"
+    "smoothscroll-polyfill": "^0.4.4"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
