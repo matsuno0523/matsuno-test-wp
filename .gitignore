@@ -4,3 +4,5 @@ public_html/uploads
 public_html/robots.txt
 public_html/sitemap.xml
 wordpress.sql
+public_html/assets/css/customize.min.css.map
+public_html/assets/js/customize.min.js.map
