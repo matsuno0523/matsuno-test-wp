@@ -3,16 +3,16 @@ services:
   db:
     image: mariadb:10.5
     environment:
-      MYSQL_ROOT_PASSWORD: mpcreative
-      MYSQL_DATABASE: dbname
-      MYSQL_USER: dbuser
-      MYSQL_PASSWORD: dbpass
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp_user
+      MYSQL_PASSWORD: wp_password
+      MYSQL_ROOT_PASSWORD: root_password
     volumes:
       - db_data:/var/lib/mysql
-      - ./dbname.sql:/docker-entrypoint-initdb.d/1.sql
+      - ./wordpress.sql:/docker-entrypoint-initdb.d/1.sql
     restart: always
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pmpcreative"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
       timeout: 20s
       retries: 10
       start_period: 20s
@@ -23,10 +23,10 @@ services:
       - "8080:80"
     environment:
       APP_ENV: docker_dev
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: wp_password
       WORDPRESS_DB_HOST: db
-      WORDPRESS_DB_USER: dbuser
-      WORDPRESS_DB_PASSWORD: dbpass
-      WORDPRESS_DB_NAME: dbname
       WORDPRESS_DEBUG: "false"
       WORDPRESS_CONFIG_EXTRA: |
         define('WP_SITEURL', 'http://localhost:8080/wp');
@@ -46,7 +46,7 @@ services:
       - db
     environment:
       PMA_HOST: db
-      MYSQL_ROOT_PASSWORD: mpcreative
+      MYSQL_ROOT_PASSWORD: root_password
     ports:
       - "8081:80"
     restart: always
