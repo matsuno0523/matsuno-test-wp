@@ -143,8 +143,8 @@ function mp_scripts() {
     wp_enqueue_script(
         'my-custom-script', // ハンドル名
         home_url( '/assets/js/customize.min.js' ), // パス
-        array(), // 依存関係（jQueryに依存する場合は 'jquery' を追加）
-        '20231006', // バージョン
+        array('jquery'), // 依存関係（jQueryに依存する場合は 'jquery' を追加）
+        '1.0.0', // バージョン
         true // フッターで読み込む（true）
     );
 

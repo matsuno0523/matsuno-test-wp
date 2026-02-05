@@ -163,15 +163,15 @@ add_action( 'wp_before_admin_bar_render', 'hide_admin_logo' );
 
 // 管理画面カスタマイズJS/CSS読み込み
 function custom_admin_style(){
-    // register admin stylesheet
-    wp_register_style( 'admin-stylesheet', get_template_directory_uri() . '/css/admin-style.css', array(), '', 'all' );
-    // enqueue styles and scripts
-    wp_enqueue_style( 'admin-stylesheet' );
+  // register admin stylesheet
+  wp_register_style( 'admin-stylesheet', get_template_directory_uri() . '/css/admin-style.css', array(), '', 'all' );
+  // enqueue styles and scripts
+  wp_enqueue_style( 'admin-stylesheet' );
 }
 function custom_admin_scripts(){
-    //adding scripts file in the footer
-    wp_register_script( 'admin-js', get_template_directory_uri() . '/js/admin-script.js', array( 'jquery' ), '', true );
-    wp_enqueue_script( 'admin-js' );
+  //adding scripts file in the footer
+  wp_register_script( 'admin-js', get_template_directory_uri() . '/js/admin-script.js', array( 'jquery' ), '', true );
+  wp_enqueue_script( 'admin-js' );
 
 }
 add_action( 'admin_print_styles', 'custom_admin_style' );
@@ -230,13 +230,13 @@ function add_column($column_name, $post_id) {
 
   //使用していない場合「なし」を表示
   if ( isset($stitle) && $stitle ) {
-      echo attribute_escape($stitle);
+    echo esc_attr($stitle);
   } else if ( isset($thum) && $thum ) {
-      echo $thum;
+    echo $thum;
   } else if ( isset($pcategory) && $pcategory ) {
-      echo $pcategory;
+    echo $pcategory;
   } else {
-      echo __('None');
+    echo __('None');
   }
 }
 add_filter( 'manage_posts_columns', 'custom_columns' );
@@ -270,67 +270,71 @@ add_action('admin_menu', 'remove_menus');
 
 //管理者でないときに本体のアップデートを表示させない
 if (!current_user_can('level_10')){
-  add_filter( 'pre_site_transient_update_core', create_function( '$a', "return null;" ) );
+  add_filter( 'pre_site_transient_update_core', function( $a ) {
+    return null;
+  } );
 }
 
 //一般設定画面に項目を追加
 function add_general_custom_sections() {
-    // add_settings_field( 'キー', 'ラベル', 'コールバック関数', 'general' )で項目を追加
-    // サイトのデフォルトDescription設定
-    add_settings_field( 'default_description', 'META：ディスクリプション', 'default_description', 'general' );
-    register_setting( 'general', 'default_description' );
+  // add_settings_field( 'キー', 'ラベル', 'コールバック関数', 'general' )で項目を追加
+  // サイトのデフォルトDescription設定
+  add_settings_field( 'default_description', 'META：ディスクリプション', 'default_description', 'general' );
+  register_setting( 'general', 'default_description' );
 
-    // サイトのデフォルトKeywords設定
-    add_settings_field( 'default_keywords', 'META：キーワード', 'default_keywords', 'general' );
-    register_setting( 'general', 'default_keywords' );
+  // サイトのデフォルトKeywords設定
+  add_settings_field( 'default_keywords', 'META：キーワード', 'default_keywords', 'general' );
+  register_setting( 'general', 'default_keywords' );
 
-    // 追加メタタグ設定
-    add_settings_field( 'add_custom_meta', '追加メタタグ', 'add_custom_meta', 'general' );
-    // register_setting( 'general', 'キー' )で値を保存
-    register_setting( 'general', 'add_custom_meta' );
+  // 追加メタタグ設定
+  add_settings_field( 'add_custom_meta', '追加メタタグ', 'add_custom_meta', 'general' );
+  // register_setting( 'general', 'キー' )で値を保存
+  register_setting( 'general', 'add_custom_meta' );
 
-    //Viewport設定
-    add_settings_field( 'viewport', 'Viewport設定', 'viewport', 'general' );
-    register_setting( 'general', 'viewport' );
+  //Viewport設定
+  add_settings_field( 'viewport', 'Viewport設定', 'viewport', 'general' );
+  register_setting( 'general', 'viewport' );
 
-    //Newマーク表示期間設定
-    add_settings_field( 'new_period', 'NEWマーク表示日数', 'new_period', 'reading' );
-    register_setting( 'reading', 'new_period' );
+  //Newマーク表示期間設定
+  add_settings_field( 'new_period', 'NEWマーク表示日数', 'new_period', 'reading' );
+  register_setting( 'reading', 'new_period' );
 
 }
 function default_keywords( $args ) {
-    $default_keywords = get_option( 'default_keywords' ) ?: get_bloginfo('name');
-    ?>
-    <input type="text" class="regular-text" name="default_keywords" id="default_keywords" value="<?php echo esc_attr( $default_keywords ); ?>" />
-    <?php
+  $default_keywords = get_option( 'default_keywords' ) ?: get_bloginfo('name');
+  ?>
+  <input type="text" class="regular-text" name="default_keywords" id="default_keywords" value="<?php echo esc_attr( $default_keywords ); ?>" />
+  <?php
 }
 function default_description( $args ) {
-    $default_description = get_option( 'default_description' ) ?: get_bloginfo('name').'のウェブサイトです。';
-    ?>
-    <textarea name="default_description" id="default_description" rows="5" cols="70"><?php echo esc_attr( $default_description ); ?></textarea>
-    <?php
+  $default_description = get_option( 'default_description' ) ?: get_bloginfo('name').'のウェブサイトです。';
+  ?>
+  <textarea name="default_description" id="default_description" rows="5" cols="70"><?php echo esc_attr( $default_description ); ?></textarea>
+  <?php
 }
 function add_custom_meta( $args ) {
-    $add_custom_meta = get_option( 'add_custom_meta' ) ?: '<!-- Google Analytics code here -->';
-    ?>
-    <textarea name="add_custom_meta" id="add_custom_meta" rows="5" cols="70"><?php echo esc_attr( $add_custom_meta ); ?></textarea>
-    <?php
+  $add_custom_meta = get_option( 'add_custom_meta' ) ?: '<!-- Google Analytics code here -->';
+  ?>
+  <textarea name="add_custom_meta" id="add_custom_meta" rows="5" cols="70"><?php echo esc_attr( $add_custom_meta ); ?></textarea>
+  <?php
 }
 function viewport( $args ) {
-    $viewport = get_option( 'viewport' ) ?: 'width=device-width';
-    ?>
-    <input type="text" class="regular-text code" name="viewport" id="viewport" value="<?php echo esc_attr( $viewport ); ?>" />
-    <?php
+  $viewport = get_option( 'viewport' ) ?: 'width=device-width';
+  ?>
+  <input type="text" class="regular-text code" name="viewport" id="viewport" value="<?php echo esc_attr( $viewport ); ?>" />
+  <?php
 }
 function new_period( $args ) {
-    $new_period = get_option( 'new_period' ) ?: 7 ;
-    ?>
-    <input type="number" class="small-text" name="new_period" id="new_period" value="<?php echo esc_attr( $new_period ); ?>" />
-    <?php
+  $new_period = get_option( 'new_period' ) ?: 7 ;
+  ?>
+  <input type="number" class="small-text" name="new_period" id="new_period" value="<?php echo esc_attr( $new_period ); ?>" />
+  <?php
 }
 // admin_initアクションにフック
 add_action( 'admin_init', 'add_general_custom_sections' );
 //Googleanalyticsをwp-headにフック
-add_action('wp_head',create_function('', 'echo get_option("add_custom_meta").PHP_EOL;'));
+add_action('wp_head', function() {
+  echo get_option("add_custom_meta") . PHP_EOL;
+});
 
 ?>

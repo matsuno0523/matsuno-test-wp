@@ -9,7 +9,7 @@ module.exports = {
 	},
 	output: {
 		path: path.resolve( process.cwd(), 'public_html/assets' ),
-		filename: 'js/[name].js',
+		filename: 'js/[name].min.js',
 		clean: {
 			keep: /webfonts|img|svg/,
 		},
@@ -33,7 +33,7 @@ module.exports = {
 		).map( ( plugin ) => {
 			if ( plugin.constructor.name === 'MiniCssExtractPlugin' ) {
 				return new MiniCssExtractPlugin( {
-					filename: 'css/customize.css',
+					filename: 'css/customize.min.css',
 				} );
 			}
 			return plugin;

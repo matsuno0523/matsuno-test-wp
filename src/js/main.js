@@ -19,3 +19,4 @@ UTIL.loader( (request, path) => {
 
 // テンプレートインスタンスの初期化（イベント発火）
 TPL.init();
+console.log('aaa');
